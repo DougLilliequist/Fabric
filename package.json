@@ -1,0 +1,28 @@
+{
+  "name": "fabric",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "parcel ./src/index.html",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DougLilliequist/Fabric.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DougLilliequist/Fabric/issues"
+  },
+  "homepage": "https://github.com/DougLilliequist/Fabric#readme",
+  "devDependencies": {
+    "@babel/core": "^7.11.6",
+    "@babel/plugin-transform-runtime": "^7.11.5",
+    "@babel/preset-env": "^7.11.5",
+    "glslify-bundle": "^5.1.1",
+    "glslify-deps": "^1.3.1",
+    "parcel-bundler": "^1.12.4"
+  }
+}
