@@ -12,7 +12,7 @@ import {
 } from "../../vendor/ogl/src/extras/Orbit.js";
 import {
     Verlet
-} from "./Verlet/index.js";
+} from "./VerletTriangles/index.js";
 
 export default class World3d {
     constructor() {

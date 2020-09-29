@@ -54,11 +54,13 @@ export class Verlet extends Mesh {
       heightSegments: this.heightSegments
     });
 
+    this.faces = []; //will be used for normals
     this.particles = [];
     this.sticks = [];
 
     const {
-      position
+      position,
+      index
     } = this.geometry.attributes;
 
     //have each vertex in the plane act as a particle that we apply physics to
@@ -80,18 +82,38 @@ export class Verlet extends Mesh {
 
       this.particles.push({
         currentPos: new Vec3(x, y, z),
-        prevPos: new Vec3(x + offsetX * 0.1, y + offsetY * 0.1, z + offsetZ * 0.1),
+        prevPos: new Vec3(x + offsetX * 0.5, y + offsetY * 0.5, z + offsetZ * 0.5),
         tmpPos: new Vec3(0.0, 0.0, 0.0),
         delta: new Vec3(0.0, 0.0, 0.0),
         normal: new Vec3(0.0, 0.0, 0.0),
         acc: new Vec3(0.0, 0.0, 0.0),
         // pinned: false
-        // pinned: i === topLeftIndex || i === topRightIndex || i === bottomRightIndex || i === bottomLeftIndex ? true : false //the conditions assumes index points at vertices that are on top row
-        // pinned: i === topLeftIndex || i === bottomLeftIndex ? true : false //the conditions assumes index points at vertices that are on top row
+        pinned: i === topLeftIndex || i === topRightIndex || i === bottomRightIndex || i === bottomLeftIndex ? true : false //the conditions assumes index points at vertices that are on top row
+        // pinned: i === topLeftIndex || i === topRightIndex ? true : false //the conditions assumes index points at vertices that are on top row
         // pinned: i === topLeftIndex ? true : false //the conditions assumes index points at vertices that are on top row
-        pinned: false //the conditions assumes index points at vertices that are on top row
+        // pinned: false //the conditions assumes index points at vertices that are on top row
       });
     }
+
+    this.cb = new Vec3(0.0, 0.0, 0.0);
+    this.ab = new Vec3(0.0, 0.0, 0.0);
+
+    //compute faces
+    for (let i = 0; i < index.data.length; i += 3) {
+
+      const indexA = index.data[i];
+      const indexB = index.data[i + 1];
+      const indexC = index.data[i + 2];
+
+      this.faces.push({
+        a: indexA,
+        b: indexB,
+        c: indexC,
+      })
+
+    }
+
+    console.log(this.faces)
 
     //init sticks which contains neighbours on the vertical and horizontal axis
     //  0 - 1 - 2 - 3
@@ -141,6 +163,9 @@ export class Verlet extends Mesh {
         });
       }
     }
+
+    //add diagonal sticks as well
+
   }
 
   initProgram() {
@@ -165,27 +190,52 @@ export class Verlet extends Mesh {
     // const windForceY = Math.sin(100 + this.t * 1.0);
     // const windForceZ = Math.cos(this.t * 0.5) * Math.sin(this.t * 1.0);
 
-    const windForceX = Math.cos(this.t * 0.3);
-    const windForceY = Math.sin(100 + this.t * 8.0);
-    const windForceZ = Math.cos(this.t * 0.5);
+    const windForceX = Math.cos(this.t * 0.7);
+    const windForceY = Math.sin(this.t * 0.1);
+    const windForceZ = Math.cos(this.t * 0.4);
+
+    const sphereOffsetX = Math.cos(this.t * 0.5) * Math.cos(this.t * 1.0) * 0.1;
+    const sphereOffsetY = Math.sin(this.t * 0.5) * 0.1;
+    const sphereOffsetZ = Math.cos(this.t * 0.5) * Math.sin(this.t * 1.0) * 0.1;
+
+    const topRightIndex = this.widthSegments;
+    const topLeftIndex = 0;
+    const bottomLeftIndex = (this.heightSegments + 1) * this.widthSegments;
+    const bottomRightIndex = ((this.heightSegments + 1) * (this.widthSegments + 1) - 1.0);
 
 
-    const sphereOffsetX = Math.cos(this.t * 0.5) * Math.cos(this.t * 1.0);
-    const sphereOffsetY = Math.sin(this.t * 0.5);
-    const sphereOffsetZ = Math.cos(this.t * 0.5) * Math.sin(this.t * 1.0);
+    // this.particles[topLeftIndex].acc.add(new Vec3(sphereOffsetX, sphereOffsetY, sphereOffsetZ).normalize().multiply(this.timeStepSQ * (50 * (Math.sin(this.t * 0.08) * 0.5 + 0.5))));
 
-    this.particles[0].currentPos.add(new Vec3(sphereOffsetX, sphereOffsetY, sphereOffsetZ).normalize().multiply(0.01 * (Math.sin(this.t * 0.1) * 0.5 + 0.5)));
 
-    // this.windForce.set(windForceX, windForceY, windForceZ);
-    // this.windForce.normalize().multiply(windStrength).multiply(this.timeStepSQ);
+    //FROM PARTICLE VERSION
+    // let windStrength = (Math.sin(this.t + 2.0) + Math.sin(10.0 + this.t * 0.5) + Math.sin(0.1 + this.t * 0.7)) / 3.0;
+    // windStrength *= 10.0;
+    // // const windForceX = Math.cos(this.t * 0.3) * Math.cos(this.t * 1.0);
+    // // const windForceY = Math.sin(100 + this.t * 1.0);
+    // // const windForceZ = Math.cos(this.t * 0.5) * Math.sin(this.t * 1.0);
 
-    // this.particles.forEach((particle) => {
+    // const windForceX = Math.cos(this.t * 0.3);
+    // const windForceY = Math.sin(100 + this.t * 8.0);
+    // const windForceZ = Math.cos(this.t * 0.5);
 
-    //   this.forceDir.copy(particle.normal).normalize().multiply(particle.normal.dot(this.windForce));
-    //   particle.acc.add(this.forceDir);
-    //   particle.acc.add(this.gravity);
 
-    // });
+    // const sphereOffsetX = Math.cos(this.t * 0.5) * Math.cos(this.t * 1.0);
+    // const sphereOffsetY = Math.sin(this.t * 0.5);
+    // const sphereOffsetZ = Math.cos(this.t * 0.5) * Math.sin(this.t * 1.0);
+
+    // this.particles[0].currentPos.add(new Vec3(sphereOffsetX, sphereOffsetY, sphereOffsetZ).normalize().multiply(0.01 * (Math.sin(this.t * 0.1) * 0.5 + 0.5)));
+
+
+    this.windForce.set(windForceX, windForceY, windForceZ);
+    this.windForce.normalize().multiply(windStrength).multiply(this.timeStepSQ);
+
+    this.particles.forEach((particle) => {
+
+      this.forceDir.copy(particle.normal).normalize().multiply(particle.normal.dot(this.windForce));
+      particle.acc.add(this.forceDir);
+      particle.acc.add(this.gravity);
+
+    });
 
   }
 
@@ -197,7 +247,7 @@ export class Verlet extends Mesh {
       // if (particle.pinned) return;
       particle.tmpPos.copy(particle.currentPos);
       particle.delta.sub(particle.currentPos, particle.prevPos);
-      particle.delta.multiply(0.999);
+      particle.delta.multiply(0.99997);
       particle.currentPos.add(particle.delta);
       particle.currentPos.add(particle.acc);
       particle.prevPos.copy(particle.tmpPos);
@@ -252,56 +302,39 @@ export class Verlet extends Mesh {
     this.geometry.attributes.normal.needsUpdate = true;
   }
 
-  //naive approach where I compute normal by determining the bitangent based on the neighbouring
-  //particle on the horizontal axis and tangent based on the neighbour particle along the vertical axis
+  //based on: https://www.iquilezles.org/www/articles/normals/normals.htm
+  //used on THREE's example, but instead of creating new vectors, I simply reset
+  //the normal to 0, accumleate the normal and normalize
+
   updateNormals() {
 
-    const vertexCountX = this.widthSegments + 1;
-    const vertexCountY = this.heightSegments + 1;
-    const vertexCount = vertexCountX * vertexCountY;
+    this.particles.forEach((particle) => {
 
-    let normalIndexOffset = 0;
-    const tangent = new Vec3();
-    const biNormal = new Vec3();
+      particle.normal.multiply(0);
 
-    for (let y = 0; y < vertexCountY; y++) {
+    });
 
-      normalIndexOffset = y * (vertexCountY);
+    this.faces.forEach((face) => {
 
-      for (let x = 0; x < vertexCountX; x++) {
+      const a = this.particles[face.a].currentPos;
+      const b = this.particles[face.b].currentPos;
+      const c = this.particles[face.c].currentPos;
 
-        let index = normalIndexOffset + x;
-        const atEdgeX = x + 1 === vertexCountX;
-        const atEdgeY = (index + vertexCountY > vertexCount - 1);
+      this.cb.sub(c, b);
+      this.ab.sub(a, b);
+      this.cb.cross(this.ab);
 
-        let nextIndexColumn = atEdgeX ? index - 1 : index + 1;
-        let nextIndexRow = atEdgeY ? index - vertexCountY : index + vertexCountX;
+      this.particles[face.a].normal.add(this.cb);
+      this.particles[face.b].normal.add(this.cb);
+      this.particles[face.c].normal.add(this.cb);
 
-        //compute binormal
-        const pointA = this.particles[index].currentPos;
-        const pointB = this.particles[nextIndexColumn].currentPos;
+    });
 
-        //reverse order as the bordering vertex will base binormal on previous vector
-        if (atEdgeX) {
-          biNormal.sub(pointB, pointA);
-        } else {
-          biNormal.sub(pointA, pointB);
-        }
+    this.particles.forEach((particle) => {
 
-        //same process for the tangent vectors
-        const pointC = this.particles[nextIndexRow].currentPos;
-        tangent.sub(pointC, pointA);
-        if (atEdgeY) {
-          tangent.sub(pointA, pointC);
-        } else {
-          tangent.sub(pointC, pointA);
-        }
+      particle.normal.normalize();
 
-        this.particles[index].normal.cross(biNormal, tangent).normalize();
-
-      }
-
-    }
+    });
 
   }
 
@@ -311,8 +344,10 @@ export class Verlet extends Mesh {
     this.applyForces({
       t
     });
+
     this.applyVerlet();
     this.applyConstraints();
+
     this.updateGeometry();
   }
 }
