@@ -188,13 +188,13 @@ export class Simulation {
 
     }
 
-    get Position() {
+    get Positions() {
 
         return this.positionSim.fbo.read.texture;
 
     }
 
-    get Velocity() {
+    get Velocities() {
         return this.velocitySim.fbo.read.texture;
     }
 

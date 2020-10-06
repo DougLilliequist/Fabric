@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "parcel ./src/index.html",
+    "dev": "parcel --host 192.168.1.151 ./src/index.html",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

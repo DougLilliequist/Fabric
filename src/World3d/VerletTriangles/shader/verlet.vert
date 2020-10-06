@@ -20,7 +20,7 @@ void main() {
     // modelViewPos.xy += position.xy * 0.1;
 
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = 10.0;
+    gl_PointSize = 5.0;
     vUv = uv;
     vNormal = normal;
     vPos = position;

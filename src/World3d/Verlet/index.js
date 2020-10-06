@@ -44,8 +44,8 @@ export class Verlet extends Mesh {
   }
 
   initGeometry() {
-    this.widthSegments = 20;
-    this.heightSegments = 20;
+    this.widthSegments = 19;
+    this.heightSegments = 19;
 
     this.geometry = new Plane(this.gl, {
       width: 7,
