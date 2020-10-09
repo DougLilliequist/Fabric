@@ -1,0 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;800&display=swap');
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow: hidden;
+}
+
+.content-container {
+
+    position: absolute;
+    width: 85vw;
+    top: 50%;
+    // transform: translate3d(0%, -50%, 0px);
+    transform: translate3d(0px, 0px, 0px);
+    // left: 10vw;
+    margin: 0;
+    padding-left: 5vw;
+    padding-right: 5vw;
+    // display: flex;
+    flex-direction: column;
+    display: inline-block;
+    // mix-blend-mode: exclusion;
+
+}
+
+.event-info {
+    
+    // color: #17437c;
+    color: #000000;
+
+
+}
+
+.title {
+
+    font-weight: bold;
+    // font-size: 40px;
+    font-size: 10vw;
+    margin: 0;
+    margin-top: 15px;
+    font-weight: 800;
+    user-select: none;
+    -webkit-user-select: none;
+    // opacity: 0.5;
+
+}
+
+.date {
+
+    font-size: 5vw;
+    margin:0;
+    font-weight: 400;
+    user-select: none;
+    -webkit-user-select: none;
+    // opacity: 0.5;
+}
+
+.company-logo {
+    
+    position: absolute;
+    right: 0;
+    padding: 20px;
+    transform: scale(0.7);
+    
+    path {
+        fill: #17437c !important;
+    }
+
+}
+
+.scroll-arrow {
+
+    position: absolute;
+    left: 50%;
+    transform: translate3d(-50%, 0%, 0px);
+    bottom: 0;
+    padding: 20px;
+
+}
+
+.event-details {
+    
+    position: absolute;
+    width: 100vw;
+    height: 100vh;
+    background-color: #1a17ca;
+    margin: 0;
+    padding: 0;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+
+}
+
+.content-wrapper {
+
+    padding-left: 8vw;
+    padding-right: 8vw;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    height: 100%;
+    transform: translate3d(0px, 0px, 0px);
+
+}
+
+.event-detail {
+    color: #ffffff;
+    font-size: 5vw;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.hidden {
+
+    visibility: hidden;
+
+}

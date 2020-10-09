@@ -19,13 +19,14 @@ export default class World3d {
     });
     this.gl = this.renderer.gl;
 
-    this.gl.clearColor(0.6, 0.6, 0.9, 1);
+    this.gl.clearColor(0.93, 0.93, 0.93, 1);
     this.gl.canvas.style.top = "0";
     this.gl.canvas.style.left = "0";
-    this.gl.canvas.style.zIndex = "0";
+    this.gl.canvas.style.zIndex = "-1";
     this.gl.canvas.style.position = "absolute";
     this.gl.canvas.style.width = "100vw";
     this.gl.canvas.style.height = "100vh";
+    this.gl.canvas.classList.add("webgl-canvas");
 
     document.body.appendChild(this.gl.canvas);
 
@@ -34,7 +35,7 @@ export default class World3d {
     });
     this.camera.position.x = 0.0;
     this.camera.position.y = 0.0;
-    this.camera.position.z = 35.0;
+    this.camera.position.z = 5.0;
     // this.camera.lookAt([0.0, 0.0, 0.0]);
 
     this.orbitCamera = new Orbit(this.camera, {
@@ -52,7 +53,7 @@ export default class World3d {
 
   initMesh() {
     this.verlet = new Verlet(this.gl);
-    this.verlet.position.set(3.0, 0.0, 0.0);
+    this.verlet.position.set(0.0, 0.0, 0.0);
     this.verlet.setParent(this.scene);
   }
 
@@ -77,7 +78,7 @@ export default class World3d {
     this.deltaTime = (this.time - this.prevTime) / 1000.0;
     this.prevTime = tmpTime;
 
-    this.orbitCamera.update();
+    // this.orbitCamera.update();
     this.verlet.update({
       t: this.deltaTime
     });

@@ -25,7 +25,7 @@ export class Verlet extends Mesh {
     this.forceDir = new Vec3(0.0, 0.0, 0.0);
     this.windDir = new Vec3(0.0, 0.0, 0.0);
     // this.gravity = new Vec3(0.0, -0.0005, 0.0);
-    this.gravity = new Vec3(0.0, -0.0008, 0.0);
+    this.gravity = new Vec3(0.0, -0.0002, 0.0);
     this.t = 0;
 
     //this.mode = this.gl.POINTS;
@@ -37,7 +37,7 @@ export class Verlet extends Mesh {
 
     this.geometry = new Plane(this.gl, {
       width: 7,
-      height: 7,
+      height: 4,
       widthSegments: this.widthSegments,
       heightSegments: this.heightSegments
     });
@@ -78,14 +78,14 @@ export class Verlet extends Mesh {
         normal: new Vec3(0.0, 0.0, 0.0),
         acc: new Vec3(0.0, 0.0, 0.0),
         // pinned: false
-        // pinned:
-        //   i === topLeftIndex ||
-        //   i === topRightIndex ||
-        //   i === bottomRightIndex ||
-        //   i === bottomLeftIndex
-        //     ? true
-        //     : false //the conditions assumes index points at vertices that are on top row
-        pinned: i === topLeftIndex || i === bottomLeftIndex ? true : false //the conditions assumes index points at vertices that are on top row
+        pinned:
+          i === topLeftIndex ||
+          i === topRightIndex ||
+          i === bottomRightIndex ||
+          i === bottomLeftIndex
+            ? true
+            : false //the conditions assumes index points at vertices that are on top row
+        // pinned: i === topLeftIndex || i === bottomLeftIndex ? true : false //the conditions assumes index points at vertices that are on top row
         // pinned: i === topLeftIndex ? true : false //the conditions assumes index points at vertices that are on top row
         // pinned: false //the conditions assumes index points at vertices that are on top row
       });
@@ -181,7 +181,7 @@ export class Verlet extends Mesh {
         Math.sin(10.0 + this.t * 5.5) +
         Math.sin(30.1 + this.t * 3.7)) /
       3.0;
-    windStrength *= 10.0;
+    windStrength *= 5.0;
     // const windForceX = Math.cos(this.t * 0.3) * Math.cos(this.t * 1.0);
     // const windForceY = Math.sin(100 + this.t * 1.0);
     // const windForceZ = Math.cos(this.t * 0.5) * Math.sin(this.t * 1.0);
@@ -201,9 +201,10 @@ export class Verlet extends Mesh {
       (this.heightSegments + 1) * (this.widthSegments + 1) - 1.0;
 
     this.windDir
-      .set(-0.1, 0.0, 2)
+      // .set(0.2, 0.15, 0.15)
+      .set(0.2, 0.15, 0.15)
       .normalize()
-      .multiply(0.002);
+      .multiply(0.0001);
 
     // this.particles[topLeftIndex].acc.add(new Vec3(sphereOffsetX, sphereOffsetY, sphereOffsetZ).normalize().multiply(this.timeStepSQ * (50 * (Math.sin(this.t * 0.08) * 0.5 + 0.5))));
 
