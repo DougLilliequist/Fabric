@@ -80,16 +80,16 @@ export class Verlet extends Mesh {
 
       this.particles.push({
         currentPos: new Vec3(x, y, z),
-        prevPos: new Vec3(x + offsetX * 0.1, y + offsetY * 0.1, z + offsetZ * 0.1),
+        prevPos: new Vec3(x + offsetX * 0.05, y + offsetY * 0.05, z + offsetZ * 0.05),
         tmpPos: new Vec3(0.0, 0.0, 0.0),
         delta: new Vec3(0.0, 0.0, 0.0),
         normal: new Vec3(0.0, 0.0, 0.0),
         acc: new Vec3(0.0, 0.0, 0.0),
-        // pinned: false
+        pinned: false
         // pinned: i === topLeftIndex || i === topRightIndex || i === bottomRightIndex || i === bottomLeftIndex ? true : false //the conditions assumes index points at vertices that are on top row
         // pinned: i === topLeftIndex || i === bottomLeftIndex ? true : false //the conditions assumes index points at vertices that are on top row
         // pinned: i === topLeftIndex ? true : false //the conditions assumes index points at vertices that are on top row
-        pinned: false //the conditions assumes index points at vertices that are on top row
+        // pinned: false //the conditions assumes index points at vertices that are on top row
       });
     }
 
@@ -160,7 +160,7 @@ export class Verlet extends Mesh {
 
     this.t += t;
     let windStrength = (Math.sin(this.t + 2.0) + Math.sin(10.0 + this.t * 0.5) + Math.sin(0.1 + this.t * 0.7)) / 3.0;
-    windStrength *= 10.0;
+    windStrength *= 10;
     // const windForceX = Math.cos(this.t * 0.3) * Math.cos(this.t * 1.0);
     // const windForceY = Math.sin(100 + this.t * 1.0);
     // const windForceZ = Math.cos(this.t * 0.5) * Math.sin(this.t * 1.0);
@@ -170,22 +170,22 @@ export class Verlet extends Mesh {
     const windForceZ = Math.cos(this.t * 0.5);
 
 
-    const sphereOffsetX = Math.cos(this.t * 0.5) * Math.cos(this.t * 1.0);
+    const sphereOffsetX = Math.cos(this.t * 0.5) * Math.cos(this.t * 2.0);
     const sphereOffsetY = Math.sin(this.t * 0.5);
-    const sphereOffsetZ = Math.cos(this.t * 0.5) * Math.sin(this.t * 1.0);
+    const sphereOffsetZ = Math.cos(this.t * 0.5) * Math.sin(this.t * 2.0);
 
-    this.particles[0].currentPos.add(new Vec3(sphereOffsetX, sphereOffsetY, sphereOffsetZ).normalize().multiply(0.01 * (Math.sin(this.t * 0.1) * 0.5 + 0.5)));
+    // this.particles[0].currentPos.add(new Vec3(sphereOffsetX, sphereOffsetY, sphereOffsetZ).normalize().multiply(0.01 * (Math.sin(this.t * 0.1) * 0.5 + 0.5)));
 
-    // this.windForce.set(windForceX, windForceY, windForceZ);
-    // this.windForce.normalize().multiply(windStrength).multiply(this.timeStepSQ);
+    this.windForce.set(windForceX, windForceY, windForceZ);
+    this.windForce.normalize().multiply(windStrength).multiply(this.timeStepSQ);
 
-    // this.particles.forEach((particle) => {
+    this.particles.forEach((particle) => {
 
-    //   this.forceDir.copy(particle.normal).normalize().multiply(particle.normal.dot(this.windForce));
-    //   particle.acc.add(this.forceDir);
-    //   particle.acc.add(this.gravity);
+      this.forceDir.copy(particle.normal).multiply(particle.normal.dot(this.windForce));
+      particle.acc.add(this.forceDir);
+      particle.acc.add(this.gravity);
 
-    // });
+    });
 
   }
 
@@ -197,7 +197,7 @@ export class Verlet extends Mesh {
       // if (particle.pinned) return;
       particle.tmpPos.copy(particle.currentPos);
       particle.delta.sub(particle.currentPos, particle.prevPos);
-      particle.delta.multiply(0.999);
+      particle.delta.multiply(0.99);
       particle.currentPos.add(particle.delta);
       particle.currentPos.add(particle.acc);
       particle.prevPos.copy(particle.tmpPos);
@@ -277,27 +277,26 @@ export class Verlet extends Mesh {
         let nextIndexColumn = atEdgeX ? index - 1 : index + 1;
         let nextIndexRow = atEdgeY ? index - vertexCountY : index + vertexCountX;
 
-        //compute binormal
+        //compute tangent
         const pointA = this.particles[index].currentPos;
         const pointB = this.particles[nextIndexColumn].currentPos;
 
         //reverse order as the bordering vertex will base binormal on previous vector
         if (atEdgeX) {
-          biNormal.sub(pointB, pointA);
+          tangent.sub(pointB, pointA);
         } else {
-          biNormal.sub(pointA, pointB);
+          tangent.sub(pointA, pointB);
         }
 
-        //same process for the tangent vectors
+        //same process for the binormal vectors
         const pointC = this.particles[nextIndexRow].currentPos;
-        tangent.sub(pointC, pointA);
         if (atEdgeY) {
-          tangent.sub(pointA, pointC);
+          biNormal.sub(pointA, pointC);
         } else {
-          tangent.sub(pointC, pointA);
+          biNormal.sub(pointC, pointA);
         }
 
-        this.particles[index].normal.cross(biNormal, tangent).normalize();
+        this.particles[index].normal.cross(tangent,biNormal).normalize();
 
       }
 
