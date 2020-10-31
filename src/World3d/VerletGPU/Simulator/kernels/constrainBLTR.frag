@@ -26,35 +26,32 @@ vec2 getCenterTexel(vec2 coord, vec2 offset) {
 
 }
 
-
 //inspired by:
 //https://pdfs.semanticscholar.org/4718/6dcbbc8ccc01c6f4143719d09ed5ab4395fb.pdf?_ga=2.107277378.1544954547.1603025794-293436447.1603025794
 
 void main() {
 
     vec4 pos = texture2D(tMap, getCenterTexel(vUv, vec2(0.0)));
+    
+    //r = top right
+    //g = bottom left
+    //b = top left
+    //w = bottom right
+    vec2 restLength = texture2D(_RestLength, vUv).xy;
     vec3 displacement = vec3(0.0, 0.0, 0.0);
-
-        //r = right
-    //g = left
-    //b = top
-    //w = bottom
-    vec2 restLength = texture2D(_RestLength, vUv).zw;
 
     vec2 texelSize = vec2(1.0/64.0);
 
     //floor uv coordinate to get integer representation
     //so we know which particle to go towards
-    float floorCoord = floor(vUv.y * 63.0);
-    float modFloorCoord = mod(floorCoord, 2.0);
-    bool constrainA = modFloorCoord == mix(0.0, 1.0, _Flip);
-    bool constrainB = modFloorCoord == mix(1.0, 0.0, _Flip);
+    vec2 floorCoord = floor(vUv * 63.0);
+    vec2 modFloorCoord = mod(floorCoord, 2.0);
 
-    // vec3 x1 = texture2D(tMap, getCenterTexel(vUv + vec2(0.0, texelSize.y))).xyz;
-    // vec3 x2 = texture2D(tMap, getCenterTexel(vUv + vec2(0.0, -texelSize.y))).xyz;
+    bool constrainA = modFloorCoord.x == mix(0.0, 1.0, _Flip) && (vUv.y < 1.0 - texelSize.y) && (vUv.x < 1.0 - texelSize.x);
+    bool constrainB = modFloorCoord.x == mix(1.0, 0.0, _Flip) && (vUv.y > texelSize.y) && (vUv.x > texelSize.x);
 
-    vec3 x1 = texture2D(tMap, getCenterTexel(vUv, vec2(0.0, texelSize.y))).xyz;
-    vec3 x2 = texture2D(tMap, getCenterTexel(vUv, vec2(0.0, -texelSize.y))).xyz;
+    vec3 x1 = texture2D(tMap, getCenterTexel(vUv, vec2(texelSize.x, texelSize.y))).xyz;
+    vec3 x2 = texture2D(tMap, getCenterTexel(vUv, vec2(-texelSize.x, -texelSize.y))).xyz;
 
     if(constrainA) {
         displacement = constrain(pos.xyz, x1, restLength.x);

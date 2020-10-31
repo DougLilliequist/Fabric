@@ -132,7 +132,8 @@ export class Verlet extends Mesh {
 
   update({
     t,
-    isInteracting
+    isInteracting,
+    inputWorldPos
   }) {
 
     if(isInteracting) {
@@ -145,7 +146,7 @@ export class Verlet extends Mesh {
 
     this.simulationThread.postMessage(["simulate", {
       windForce: this.windForce,
-      attractionPoint: this.attractionPoint,
+      inputWorldPos,
       isInteracting
     }]);
 

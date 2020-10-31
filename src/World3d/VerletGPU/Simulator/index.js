@@ -1,6 +1,7 @@
 import { Program } from "../../../../vendor/ogl/src/core/Program";
 import { Vec2 } from "../../../../vendor/ogl/src/math/Vec2";
 import { Texture } from "../../../../vendor/ogl/src/core/Texture";
+import { Vec3 } from "../../../../vendor/ogl/src/math/Vec3";
 const { GPGPU } = require("../../../../vendor/ogl/src/extras/GPGPU");
 
 const prevPosKernel = require('./kernels/prevPos.frag');
@@ -9,9 +10,15 @@ const positionKernel = require('./kernels/position.frag');
 const normalKernel = require('./kernels/calcNormal.frag');
 
 const restlengthKernel = require('./kernels/restLength.frag');
+const restLengthDiagonalKernel = require('./kernels/restLengthDiagonal.frag');
 const constraintKernel = require('./kernels/constrain.frag');
+
 const constrainHorizontalKernel = require('./kernels/constrainHorizontal.frag');
 const constrainVerticalKernel = require('./kernels/constrainVertical.frag');
+const constrainBLTRKernel = require('./kernels/constrainBLTR.frag');
+const constrainBRTLKernel = require('./kernels/constrainBRTL.frag');
+
+import {params} from '../../../params.js';
 
 export class Simulator {
 
@@ -89,9 +96,9 @@ export class Simulator {
 
                 let offsetz = Math.random() * 2.0 - 1.0;
 
-                prevPositionData[prevPosIterator++] += (offsetx*0.5);
-                prevPositionData[prevPosIterator++] += (offsety*0.5);
-                prevPositionData[prevPosIterator++] += (offsetz*0.5);
+                prevPositionData[prevPosIterator++] += (offsetx*0.0);
+                prevPositionData[prevPosIterator++] += (offsety*0.0);
+                prevPositionData[prevPosIterator++] += (offsetz*0.0);
                 prevPositionData[prevPosIterator++] += 0.0;
 
             // }
@@ -115,7 +122,7 @@ export class Simulator {
 
             normalData[normalIterator++] = 0.0;
             normalData[normalIterator++] = 0.0;
-            normalData[normalIterator++] = 1.0;
+            normalData[normalIterator++] = -1.0;
             normalData[normalIterator++] = 1.0;
 
         }
@@ -126,6 +133,11 @@ export class Simulator {
         });
 
         this.restlengthCapture = new GPGPU(this.gl, {
+            data: new Float32Array(this.countX*this.countY*4), //temporary for now,
+            type: this.gl.FLOAT
+        });
+
+        this.restlengthDiagonalCapture = new GPGPU(this.gl, {
             data: new Float32Array(this.countX*this.countY*4), //temporary for now,
             type: this.gl.FLOAT
         });
@@ -153,14 +165,13 @@ export class Simulator {
             uniforms: restlengthCaptureU
         });
 
-        const positionSimU = {
-            _PrevPos: this.prevPositionCapture.uniform,
-            _CurrentPos: this.currentPosCapture.uniform
+        const restlengthDiagonalU = {
+            _InitPos: this.positionSim.uniform
         }
 
-        this.positionSim.addPass({
-            fragment: positionKernel,
-            uniforms: positionSimU
+        this.restlengthDiagonalCapture.addPass({
+            fragment: restLengthDiagonalKernel,
+            uniforms: restlengthDiagonalU
         });
 
         const normalSimU = {
@@ -172,19 +183,31 @@ export class Simulator {
             uniforms: normalSimU
         });
 
-        // const constraintU = {
-        //     _TexelSize: {
-        //         value: new Vec2(1.0 / this.countX, 1.0 / this.countY)
-        //     },
-        //     _RestLength: this.restlengthCapture.uniform,
-        // }
+        const positionSimU = {
+            _PrevPos: this.prevPositionCapture.uniform,
+            _CurrentPos: this.currentPosCapture.uniform,
+            _Normal: this.normalSim.uniform,
+            _Force: {
+                value: new Vec3(0.0, 0.0, 0.0)
+            },
+            _Time: {
+                value: 0.0
+            },
+            _InputWorldPos: {
+                value: new Vec3(0.0,0.0,0.0)
+            },
+            _IsInteracting: {
+                value: false
+            },
+            _Corner: {
+                value: 0
+            }
+        }
 
-        // for(let i = 0; i < 8; i++) {
-        //     this.positionSim.addPass({
-        //         fragment: constraintKernel,
-        //         uniforms: constraintU
-        //    });
-        // }
+        this.positionSim.addPass({
+            fragment: positionKernel,
+            uniforms: positionSimU
+        });
 
         const prevPosCaptureSimU = {
             _Positions: this.currentPosCapture.uniform
@@ -208,6 +231,9 @@ export class Simulator {
             _TexelSize: {
                 value: new Vec2(1.0 / this.countX, 1.0 / this.countY)
             },
+            _Stiffness: {
+                value: params.PHYSICS.STIFFNESS
+            },
             _Flip: {
                 value: 0.0
             },
@@ -219,6 +245,9 @@ export class Simulator {
         const constrainHorizontalSecondPassU = {
             _TexelSize: {
                 value: new Vec2(1.0 / this.countX, 1.0 / this.countY)
+            },
+            _Stiffness: {
+                value: params.PHYSICS.STIFFNESS
             },
             _Flip: {
                 value: 1.0
@@ -233,6 +262,9 @@ export class Simulator {
             _TexelSize: {
                 value: new Vec2(1.0 / this.countX, 1.0 / this.countY)
             },
+            _Stiffness: {
+                value: params.PHYSICS.STIFFNESS
+            },
             _Flip: {
                 value: 0.0
             },
@@ -245,6 +277,9 @@ export class Simulator {
             _TexelSize: {
                 value: new Vec2(1.0 / this.countX, 1.0 / this.countY)
             },
+            _Stiffness: {
+                value: params.PHYSICS.STIFFNESS
+            },
             _Flip: {
                 value: 1.0
             },
@@ -253,9 +288,68 @@ export class Simulator {
 
         }
 
-        for(let i = 0; i < 1; i++) {
+        const constrainBLTRfirstPasssU = {
+            _TexelSize: {
+                value: new Vec2(1.0 / this.countX, 1.0 / this.countY)
+            },
+            _Stiffness: {
+                value: params.PHYSICS.STIFFNESS
+            },
+            _Flip: {
+                value: 0.0
+            },
+            _RestLength: this.restlengthDiagonalCapture.uniform,
+            // _Position: this.positionSim.uniform
+
+        }
+
+        const constrainBLTRsecondPasssU = {
+            _TexelSize: {
+                value: new Vec2(1.0 / this.countX, 1.0 / this.countY)
+            },
+            _Stiffness: {
+                value: params.PHYSICS.STIFFNESS
+            },
+            _Flip: {
+                value: 1.0
+            },
+            _RestLength: this.restlengthDiagonalCapture.uniform,
+            // _Position: this.positionSim.uniform
+
+        }
+
+        const constrainBRTLfirstPasssU = {
+            _TexelSize: {
+                value: new Vec2(1.0 / this.countX, 1.0 / this.countY)
+            },
+            _Stiffness: {
+                value: params.PHYSICS.STIFFNESS
+            },
+            _Flip: {
+                value: 0.0
+            },
+            _RestLength: this.restlengthDiagonalCapture.uniform,
+            // _Position: this.positionSim.uniform
+
+        }
+
+        const constrainBRTLsecondPasssU = {
+            _TexelSize: {
+                value: new Vec2(1.0 / this.countX, 1.0 / this.countY)
+            },
+            _Stiffness: {
+                value: params.PHYSICS.STIFFNESS
+            },
+            _Flip: {
+                value: 1.0
+            },
+            _RestLength: this.restlengthDiagonalCapture.uniform,
+            // _Position: this.positionSim.uniform
+
+        }
 
 
+            // //HORIZONTAL CONSTRAINTS
             this.positionSim.addPass({
                 fragment: constrainHorizontalKernel,
                 uniforms: constrainHorizontalFirstPassU
@@ -265,7 +359,8 @@ export class Simulator {
                 fragment: constrainHorizontalKernel,
                 uniforms: constrainHorizontalSecondPassU
             });
-    
+
+            //VERTICAL CONSTRAINTS
             this.positionSim.addPass({
                 fragment: constrainVerticalKernel,
                 uniforms: constrainVerticalFirstPassU
@@ -276,7 +371,26 @@ export class Simulator {
                 uniforms: constrainVerticalSecondPassU
             });
 
-        }
+            //DIAGONAL CONSTRAINTS
+            this.positionSim.addPass({
+                fragment: constrainBLTRKernel,
+                uniforms: constrainBLTRfirstPasssU
+            });
+
+            this.positionSim.addPass({
+                fragment: constrainBRTLKernel,
+                uniforms: constrainBRTLfirstPasssU
+            });
+
+            this.positionSim.addPass({
+                fragment: constrainBLTRKernel,
+                uniforms: constrainBLTRsecondPasssU
+            });
+
+            this.positionSim.addPass({
+                fragment: constrainBRTLKernel,
+                uniforms: constrainBRTLsecondPasssU
+            });
 
     }
 
@@ -305,12 +419,39 @@ export class Simulator {
 
     prewarm() {
 
+        this.cornerUpdated = false;
         this.restlengthCapture.render();
+        this.restlengthDiagonalCapture.render();
+        // this.restlengthCapture.passes[0].enabled = false;
     }
 
-    update() {
-       
-        this.currentPosCapture.render();       
+    update(t, {
+        isInteracting,
+        inputWorldPos
+    }) {
+
+        this.currentPosCapture.render();   
+        
+        // let forceX = Math.cos(40.0 + t * 1.0);
+        // let forceY = Math.sin(7000.0 + t * 0.4);
+        // let forceZ = Math.sin(20.0 + t * 0.3);
+        // let windForce = ((Math.sin(10 + t * 1.0) + Math.sin(4 + t * 2.0) + Math.sin(t * 1.0)) / 3.0) * 2.0;
+        // windForce = windForce * 0.5 + 0.5;
+
+        // this.positionSim.passes[0].program.uniforms._Force.value.set(forceX * windForce, forceY*windForce,forceZ*windForce);
+        if(isInteracting) {
+            if(this.cornerUpdated === false) {
+                console.log('update corner')
+                this.positionSim.passes[0].program.uniforms._Corner.value = Math.floor(Math.random()*3);
+                this.cornerUpdated = true;
+            }
+        } else {
+            this.cornerUpdated = false;
+        }
+
+        this.positionSim.passes[0].program.uniforms._Time.value = t;
+        this.positionSim.passes[0].program.uniforms._IsInteracting.value = isInteracting;
+        this.positionSim.passes[0].program.uniforms._InputWorldPos.value.copy(inputWorldPos);
         this.positionSim.render();
         this.normalSim.render();
         this.prevPositionCapture.render();
@@ -323,6 +464,14 @@ export class Simulator {
 
     get Normals() {
         return this.normalSim.fbo.read.texture
+    }
+
+    get RestLengthsOrtho() {
+        return this.restlengthCapture.fbo.read.texture
+    }
+
+    get RestLengthsDiagonal() {
+        return this.restlengthDiagonalCapture.fbo.read.texture
     }
 
 }

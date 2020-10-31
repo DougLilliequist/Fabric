@@ -20,6 +20,7 @@ import {DisplayQuad} from './debug/DisplayQuad.js';
 import {
     Verlet
 } from "./VerletGPU/index.js";
+import { Vec3 } from "../../vendor/ogl/src/math/Vec3.js";
 
 export default class World3d {
     constructor() {
@@ -37,6 +38,8 @@ export default class World3d {
         this.gl = this.renderer.gl;
 
         this.gl.clearColor(0.9, 0.9, 0.9, 1);
+        // this.gl.clearColor(0.0, 0.5, 0.98, 1); //ghibli blue
+        // this.gl.clearColor(0.0, 0.0, 0.0, 1);
         this.gl.canvas.style.top = "0";
         this.gl.canvas.style.left = "0";
         this.gl.canvas.style.zIndex = "0";
@@ -51,7 +54,7 @@ export default class World3d {
         });
         this.camera.position.x = 0.0;
         this.camera.position.y = 0.0;
-        this.camera.position.z = 8.0;
+        this.camera.position.z = 15.0;
         // this.camera.lookAt([0.0, 0.0, 0.0]);
 
         this.orbitCamera = new Orbit(this.camera, {
@@ -66,7 +69,9 @@ export default class World3d {
 
     initEvents() {
 
-        this.inputPos = new Vec2();
+        this.inputPos = new Vec3(0.0, 0.0, 0.5);
+        this.projectedInputPos = new Vec3(0.0, 0.0, 0.5);
+        this.worldInputPos = new Vec3(0.0,0.0,0.5);
         this.raycast = new Raycast(this.gl);
         this.isInteracting = false;
 
@@ -112,7 +117,7 @@ export default class World3d {
             position: new Vec2(-0.87,0.74)
         });
 
-        this.positionQuad.setParent(this.scene);
+        // this.positionQuad.setParent(this.scene);
 
         this.prevPositionQuad = new DisplayQuad(this.gl, {
             aspect: this.renderer.width/this.renderer.height,
@@ -120,7 +125,7 @@ export default class World3d {
             position: new Vec2(-0.87,0.23)
         })
 
-        this.prevPositionQuad.setParent(this.scene);
+        // this.prevPositionQuad.setParent(this.scene);
 
         
         this.restlengthQuad = new DisplayQuad(this.gl, {
@@ -129,7 +134,7 @@ export default class World3d {
             position: new Vec2(-0.87, -0.28)
         })
 
-        this.restlengthQuad.setParent(this.scene);
+        // this.restlengthQuad.setParent(this.scene);
 
     }
 
@@ -137,9 +142,9 @@ export default class World3d {
         this.time = Date.now();
         this.prevTime = this.time;
 
-        this.positionQuad.Texture = this.verlet.simulator.positionSim.uniform.value;
-        this.prevPositionQuad.Texture = this.verlet.simulator.normalSim.uniform.value;
-        this.restlengthQuad.Texture = this.verlet.simulator.restlengthCapture.fbo.read.texture;
+        // this.positionQuad.Texture = this.verlet.simulator.positionSim.uniform.value;
+        // this.prevPositionQuad.Texture = this.verlet.simulator.normalSim.uniform.value;
+        // this.restlengthQuad.Texture = this.verlet.simulator.restlengthCapture.fbo.read.texture;
 
 
         this.update();
@@ -148,12 +153,26 @@ export default class World3d {
     render({
         scene,
         camera = null,
-        clear
+        clear = true
     }) {
         this.renderer.render({
             scene,
-            camera
+            camera,
+            clear
         });
+    }
+
+    calcScreenToWorldPos() {
+
+        
+        this.camera.unproject(this.projectedInputPos.copy(this.inputPos));
+        this.projectedInputPos.sub(this.camera.position).normalize();
+        
+        const dist = -this.camera.position.z / this.projectedInputPos.z;
+
+        this.worldInputPos.copy(this.camera.position).add(this.projectedInputPos.multiply(dist));
+        this.worldInputPos.z = -this.inputPos.y * 10.0;
+
     }
 
     update() {
@@ -164,24 +183,41 @@ export default class World3d {
         this.deltaTime = (this.time - this.prevTime) / 1000.0;
         this.prevTime = tmpTime;
 
-        // this.raycast.castMouse(this.camera, this.inputPos);
+        this.camera.updateMatrixWorld();
+        //  this.orbitCamera.update();
+
+        this.raycast.castMouse(this.camera, this.inputPos);
         // this.verlet.isHit = false;
         // this.raycast.intersectBounds([this.verlet]);
 
         // this.positionQuad.Texture = this.verlet.Positions;
+        this.calcScreenToWorldPos();
 
-        this.positionQuad.Texture = this.verlet.simulator.positionSim.uniform.value;
-        this.prevPositionQuad.Texture = this.verlet.simulator.normalSim.uniform.value;
+        // this.positionQuad.Texture = this.verlet.simulator.positionSim.uniform.value;
+        // this.prevPositionQuad.Texture = this.verlet.simulator.normalSim.uniform.value;
+        // this.restlengthQuad.Texture = this.verlet.simulator.RestLengthsDiagonal;
 
-        this.orbitCamera.update();
         this.verlet.update({
             t: this.deltaTime,
-            isInteracting: this.isInteracting
+            isInteracting: this.isInteracting,
+            inputWorldPos: this.worldInputPos
         });
+
         this.render({
             scene: this.scene,
-            camera: this.camera
+            camera: this.camera,
+            clear: true
         });
+
+        this.verlet.FlipFace();
+
+        this.render({
+            scene: this.scene,
+            camera: this.camera,
+            clear: false
+        });
+
+        this.verlet.FlipFace();
     }
 
     onResize() {

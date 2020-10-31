@@ -4,6 +4,7 @@ uniform sampler2D tMap;
 uniform vec2 _TexelSize;
 uniform float _Flip;
 uniform sampler2D _RestLength;
+uniform float _Stiffness;
 
 varying vec2 vUv;
 
@@ -15,7 +16,7 @@ vec3 constrain(vec3 a, vec3 b, float restLength) {
         return vec3(0.0, 0.0, 0.0);
     }
     float percentage = (dist-restLength) / dist;
-    return delta * percentage * 0.5;
+    return delta * percentage * _Stiffness;
 
 }
 

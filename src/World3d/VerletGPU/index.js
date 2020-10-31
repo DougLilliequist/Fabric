@@ -39,6 +39,7 @@ export class Verlet extends Mesh {
     // this.gravity = new Vec3(0.0, -0.0005, 0.0);
     this.gravity = new Vec3(0.0, 0, 0.0);
     this.t = 0;
+    this.flipped = false;
 
     // this.mode = this.gl.POINTS;
 
@@ -48,8 +49,8 @@ export class Verlet extends Mesh {
     this.widthSegments = 63;
     this.heightSegments = 63;
 
-    const width = 5.0;
-    const height = 5.0;
+    const width = 10.0;
+    const height = 10.0;
 
     const refGeometry = new Plane(this.gl, {
       width,
@@ -99,6 +100,12 @@ export class Verlet extends Mesh {
       },
       _Normals: {
         value: this.simulator.Normals
+      },
+      _Flip: {
+        value: 1.0
+      },
+      _RestLengths: {
+        value: this.simulator.RestLengthsDiagonal
       }
     };
 
@@ -106,13 +113,30 @@ export class Verlet extends Mesh {
       vertex,
       fragment,
       uniforms,
-      cullFace: null
+      cullFace: this.gl.BACK,
+      transparent: true
     });
   }
 
   update({
-    t
+    t,
+    isInteracting,
+    inputWorldPos
   }) {
-    this.simulator.update();
+    this.t += t;
+    this.simulator.update(this.t, {
+      isInteracting,
+      inputWorldPos
+    });
   }
+
+  FlipFace() {
+
+
+    this.program.cullFace = this.flipped ? this.gl.FRONT : this.gl.BACK;
+    this.program.uniforms._Flip.value = this.flipped ? -1.0 : 1.0;
+    this.flipped = !this.flipped;
+
+  }
+
 }

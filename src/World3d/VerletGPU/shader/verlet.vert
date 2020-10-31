@@ -11,6 +11,8 @@ uniform mat4 modelViewMatrix;
 uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
 
+uniform float _Flip;
+
 varying vec2 vUv;
 // varying vec3 vNormal;
 varying vec3 vPos;
@@ -29,7 +31,7 @@ void main() {
 
     gl_Position = projectionMatrix * mvPos;
     vUv = uv;
-    vPos = mvPos.xyz;
-    vNormal = norm;
+    vPos = pos.xyz;
+    vNormal = norm * _Flip;
 
 }
