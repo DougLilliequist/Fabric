@@ -11,7 +11,6 @@ const normalKernel = require('./kernels/calcNormal.frag');
 
 const restlengthKernel = require('./kernels/restLength.frag');
 const restLengthDiagonalKernel = require('./kernels/restLengthDiagonal.frag');
-const constraintKernel = require('./kernels/constrain.frag');
 
 const constrainHorizontalKernel = require('./kernels/constrainHorizontal.frag');
 const constrainVerticalKernel = require('./kernels/constrainVertical.frag');
@@ -70,7 +69,8 @@ export class Simulator {
                 let isTopLeft = y === 0 && x === 0;
                 let isTopRight = y === 0 && x >= this.countX - 1;
                
-                this.positionData[positionDataIterator++] = (isTopLeft || isTopRight) ? 0.0 : 1.0;
+                // this.positionData[positionDataIterator++] = (isTopLeft || isTopRight) ? 0.0 : 1.0;
+                this.positionData[positionDataIterator++] = 1.0;
                 // this.positionData[positionDataIterator++] = 1.0;
 
             }
@@ -157,7 +157,10 @@ export class Simulator {
     initPrograms() {
 
         const restlengthCaptureU = {
-            _InitPos: this.positionSim.uniform
+            _InitPos: this.positionSim.uniform,
+            _Size: {
+                value: params.CLOTH.SIZE
+              },
         }
 
         this.restlengthCapture.addPass({
@@ -166,7 +169,10 @@ export class Simulator {
         });
 
         const restlengthDiagonalU = {
-            _InitPos: this.positionSim.uniform
+            _InitPos: this.positionSim.uniform,
+            _Size: {
+                value: params.CLOTH.SIZE
+              },
         }
 
         this.restlengthDiagonalCapture.addPass({
@@ -175,7 +181,10 @@ export class Simulator {
         });
 
         const normalSimU = {
-            _Position: this.positionSim.uniform
+            _Position: this.positionSim.uniform,
+            _Size: {
+                value: params.CLOTH.SIZE
+              },
         }
 
         this.normalSim.addPass({
@@ -201,7 +210,10 @@ export class Simulator {
             },
             _Corner: {
                 value: 0
-            }
+            },
+            _Size: {
+                value: params.CLOTH.SIZE
+              },
         }
 
         this.positionSim.addPass({
@@ -210,7 +222,10 @@ export class Simulator {
         });
 
         const prevPosCaptureSimU = {
-            _Positions: this.currentPosCapture.uniform
+            _Positions: this.currentPosCapture.uniform,
+            _Size: {
+                value: params.CLOTH.SIZE
+              },
         }
 
         this.prevPositionCapture.addPass({
@@ -219,13 +234,18 @@ export class Simulator {
         });
 
         const currentPosCaptureSimU = {
-            _Positions: this.positionSim.uniform
+            _Positions: this.positionSim.uniform,
+            _Size: {
+                value: params.CLOTH.SIZE
+              },
         }
 
         this.currentPosCapture.addPass({
             fragment: currentPosKernel,
             uniforms: currentPosCaptureSimU
         });
+
+        //MAKE A SINGLE UNIFORM OR FUNCTION THAT RETURNS A UNIFORM WITH DESIRED PARAMS
 
         const constrainHorizontalFirstPassU = {
             _TexelSize: {
@@ -238,7 +258,12 @@ export class Simulator {
                 value: 0.0
             },
              _RestLength: this.restlengthCapture.uniform,
-            //  _Position: this.positionSim.uniform
+             _Clamp: {
+                 value: params.PHYSICS.CLAMP
+             },
+             _Size: {
+                value: params.CLOTH.SIZE
+              },
         }
 
         
@@ -253,7 +278,12 @@ export class Simulator {
                 value: 1.0
             },
             _RestLength: this.restlengthCapture.uniform,
-            // _Position: this.positionSim.uniform
+            _Clamp: {
+                value: params.PHYSICS.CLAMP
+            },
+            _Size: {
+                value: params.CLOTH.SIZE
+              },
 
         }
 
@@ -269,7 +299,12 @@ export class Simulator {
                 value: 0.0
             },
             _RestLength: this.restlengthCapture.uniform,
-            // _Position: this.positionSim.uniform
+            _Clamp: {
+                value: params.PHYSICS.CLAMP
+            },
+            _Size: {
+                value: params.CLOTH.SIZE
+              },
 
         }
 
@@ -284,7 +319,12 @@ export class Simulator {
                 value: 1.0
             },
             _RestLength: this.restlengthCapture.uniform,
-            // _Position: this.positionSim.uniform
+            _Clamp: {
+                value: params.PHYSICS.CLAMP
+            },
+            _Size: {
+                value: params.CLOTH.SIZE
+              },
 
         }
 
@@ -299,7 +339,12 @@ export class Simulator {
                 value: 0.0
             },
             _RestLength: this.restlengthDiagonalCapture.uniform,
-            // _Position: this.positionSim.uniform
+            _Clamp: {
+                value: params.PHYSICS.CLAMP
+            },
+            _Size: {
+                value: params.CLOTH.SIZE
+              },
 
         }
 
@@ -314,8 +359,12 @@ export class Simulator {
                 value: 1.0
             },
             _RestLength: this.restlengthDiagonalCapture.uniform,
-            // _Position: this.positionSim.uniform
-
+            _Clamp: {
+                value: params.PHYSICS.CLAMP
+            },
+            _Size: {
+                value: params.CLOTH.SIZE
+              },
         }
 
         const constrainBRTLfirstPasssU = {
@@ -329,7 +378,12 @@ export class Simulator {
                 value: 0.0
             },
             _RestLength: this.restlengthDiagonalCapture.uniform,
-            // _Position: this.positionSim.uniform
+            _Clamp: {
+                value: params.PHYSICS.CLAMP
+            },
+            _Size: {
+                value: params.CLOTH.SIZE
+              },
 
         }
 
@@ -344,7 +398,12 @@ export class Simulator {
                 value: 1.0
             },
             _RestLength: this.restlengthDiagonalCapture.uniform,
-            // _Position: this.positionSim.uniform
+            _Clamp: {
+                value: params.PHYSICS.CLAMP
+            },
+            _Size: {
+                value: params.CLOTH.SIZE
+              },
 
         }
 

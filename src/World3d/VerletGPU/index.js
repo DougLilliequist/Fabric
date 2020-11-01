@@ -18,10 +18,17 @@ import {
   Vec3
 } from "../../../vendor/ogl/src/math/Vec3.js";
 
+import {Shadow} from '../../../vendor/ogl/src/extras/Shadow.js'
+
+import {params} from '../../params.js';
+
 import {Simulator} from './Simulator/index.js';
+import { Camera } from "../../../vendor/ogl/src/core/Camera.js";
 
 const vertex = require("./shader/verlet.vert");
 const fragment = require("./shader/verlet.frag");
+const shadowVertex = require('./shader/shadow.vert');
+const shadowFragment = require('./shader/shadow.frag');
 
 export class Verlet extends Mesh {
   constructor(gl) {
@@ -31,6 +38,7 @@ export class Verlet extends Mesh {
 
     this.initGeometry();
     this.initProgram();
+    this.initShadowPass();
 
     this.timestep = 18.0 / 1000.0 //I suppose this is hardcoded delta time, from what I could gather from logging delta time
     this.timeStepSQ = this.timestep * this.timestep;
@@ -46,11 +54,11 @@ export class Verlet extends Mesh {
   }
 
   initGeometry() {
-    this.widthSegments = 63;
-    this.heightSegments = 63;
+    this.widthSegments = params.CLOTH.SIZE-1;
+    this.heightSegments = params.CLOTH.SIZE-1;
 
-    const width = 10.0;
-    const height = 10.0;
+    const width = 5.0;
+    const height = 5.0;
 
     const refGeometry = new Plane(this.gl, {
       width,
@@ -104,8 +112,17 @@ export class Verlet extends Mesh {
       _Flip: {
         value: 1.0
       },
+      _Size: {
+        value: params.CLOTH.SIZE
+      },
       _RestLengths: {
         value: this.simulator.RestLengthsDiagonal
+      },
+      _ShadowTexelSize: {
+        value: 1.0 / params.SHADOW.SIZE
+      },
+      _Bias: {
+        value: params.SHADOW.BIAS
       }
     };
 
@@ -118,16 +135,46 @@ export class Verlet extends Mesh {
     });
   }
 
+  initShadowPass() {
+
+    this.shadowCamera = new Camera(this.gl, {
+        near: 1.0,
+        far: 30.0,
+        left: -10.0,
+        right: 10.0,
+        top: 10.0,
+        bottom: -10.0
+    });
+
+
+    this.shadowCamera.position.set(0.0, 20.0, 0.3);
+    this.shadowCamera.lookAt([0.0, 0.0, 0.0]);
+
+    this.shadowPass = new Shadow(this.gl, {light: this.shadowCamera, width: params.SHADOW.SIZE, height: params.SHADOW.SIZE});
+
+    this.shadowPass.add({mesh: this, vertex: shadowVertex, fragment: shadowFragment});
+
+    //clean this up
+    this.depthProgram.uniforms._Positions = {value: this.simulator.Positions};
+    this.depthProgram.uniforms._Normals = {value: this.simulator.Normals};
+    this.depthProgram.uniforms._Size = {value: params.CLOTH.SIZE-1};
+
+}
+
   update({
     t,
     isInteracting,
-    inputWorldPos
+    inputWorldPos,
+    scene
   }) {
     this.t += t;
     this.simulator.update(this.t, {
       isInteracting,
       inputWorldPos
     });
+
+    this.shadowPass.render({scene});
+
   }
 
   FlipFace() {

@@ -9,17 +9,12 @@ uniform float _Time;
 uniform bool _IsInteracting;
 uniform vec3 _InputWorldPos;
 uniform float _Corner;
+uniform float _Size;
 
 varying vec2 vUv;
 
-#define INERTIA 0.998
+#define INERTIA 0.9998
 #define timestepSq 0.01*0.01
-
-vec2 getCenterTexel(vec2 coord) {
-
-    return (floor(coord * 64.0) + 0.5) / 64.0;
-
-}
 
 //
 // Description : Array and textureless GLSL 2D/3D/4D simplex 
@@ -158,13 +153,24 @@ vec3 curlNoise( vec3 p ){
   return normalize( vec3( x , y , z ) * divisor );
 
 }
+vec2 getCenterTexel(vec2 coord, vec2 offset) {
 
+    return ((floor(coord * _Size) + 0.5) / (_Size)) + offset;
+
+}
+
+
+// vec2 getCenterTexel(vec2 coord, vec2 offset) {
+
+//     return ((floor(coord+offset) * _Size) + 0.5) / _Size;
+
+// }
 
 void main() {
 
-    vec4 x = texture2D(_CurrentPos, vUv);
-    vec3 oldX = texture2D(_PrevPos, vUv).xyz;
-    vec3 delta = INERTIA * (x.xyz-oldX);
+    vec4 currentPos = texture2D(_CurrentPos, getCenterTexel(vUv, vec2(0.0)));
+    vec3 prevPos = texture2D(_PrevPos, getCenterTexel(vUv, vec2(0.0))).xyz;
+    vec3 delta = INERTIA * (currentPos.xyz-prevPos);
 
     vec3 acc = vec3(0.0);
 
@@ -174,21 +180,23 @@ void main() {
 
     // vec3 curlNoiseForce = curlNoise((x.xyz * 0.7) + _Time * 0.3) * 4.1;
     // vec3 curlNoiseForce = curlNoise((x.xyz * 0.4) + _Time * 0.001) * 10.1;
-    vec3 curlNoiseForce = curlNoise((x.xyz *0.1) + _Time * 0.03) * 10.0;
-    curlNoiseForce = normal * dot(normal, curlNoiseForce);
+    vec3 curlNoiseForce = curlNoise((currentPos.xyz *0.3) + _Time * 0.03) * 2.0;
+    // curlNoiseForce = normal * dot(normal, curlNoiseForce);
 
     if(_IsInteracting) {
 
-        if(vUv.x < 1.0/64.0 && vUv.y > 1.0 - (1.0/64.0)) {
-            x.xyz += (_InputWorldPos - x.xyz) * 0.7;
-            // x.xyz = _InputWorldPos;
-            x.w = 0.0;
+        if(vUv.x < 1.0/_Size && vUv.y > 1.0 - (1.0/_Size)) {
+            
+            // currentPos.xyz += (_InputWorldPos - currentPos.xyz) * 0.01;
+            // currentPos.xyz += normalize(_InputWorldPos - currentPos.xyz) * 2.0;
+            currentPos.xyz = _InputWorldPos;
+            // currentPos.w = 0.0;
         }
 
     } else {
         acc += curlNoiseForce;
-        acc -= normalize(x.xyz) * 1.6; 
-       x.w = 1.0;
+        acc -= normalize(currentPos.xyz) * 0.6; 
+    //    currentPos.w = 1.0;
     }
 
     // acc += curlNoiseForce;
@@ -196,11 +204,8 @@ void main() {
 
     acc *= timestepSq;
     delta += acc;
-    // delta += vec3(0.0, -0.5, 0.0) * 0.01 * 0.01;
-    // delta *= x.w;
-    // verlet *= 1.0 - step(1.0/15.0, vUv.y);
-    x.xyz = x.xyz + delta;
+    currentPos.xyz += delta;
 
-    gl_FragColor = x;
+    gl_FragColor = currentPos;
 
 }

@@ -37,9 +37,9 @@ export default class World3d {
         });
         this.gl = this.renderer.gl;
 
-        this.gl.clearColor(0.9, 0.9, 0.9, 1);
+        // this.gl.clearColor(0.9, 0.9, 0.9, 1);
         // this.gl.clearColor(0.0, 0.5, 0.98, 1); //ghibli blue
-        // this.gl.clearColor(0.0, 0.0, 0.0, 1);
+        this.gl.clearColor(0.0, 0.0, 0.0, 1);
         this.gl.canvas.style.top = "0";
         this.gl.canvas.style.left = "0";
         this.gl.canvas.style.zIndex = "0";
@@ -195,12 +195,13 @@ export default class World3d {
 
         // this.positionQuad.Texture = this.verlet.simulator.positionSim.uniform.value;
         // this.prevPositionQuad.Texture = this.verlet.simulator.normalSim.uniform.value;
-        // this.restlengthQuad.Texture = this.verlet.simulator.RestLengthsDiagonal;
+        this.restlengthQuad.Texture = this.verlet.shadowPass.target.texture;
 
         this.verlet.update({
             t: this.deltaTime,
             isInteracting: this.isInteracting,
-            inputWorldPos: this.worldInputPos
+            inputWorldPos: this.worldInputPos,
+            scene: this.scene
         });
 
         this.render({

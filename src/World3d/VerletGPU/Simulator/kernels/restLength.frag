@@ -1,18 +1,26 @@
 precision highp float;
 
 uniform sampler2D _InitPos;
+uniform float _Size;
 
 varying vec2 vUv;
 
 vec2 getCenterTexel(vec2 coord, vec2 offset) {
 
-    return ((floor(coord * 64.0) + 0.5) / 64.0) + offset;
+    return ((floor(coord * _Size) + 0.5) / (_Size)) + offset;
 
 }
 
+// vec2 getCenterTexel(vec2 coord, vec2 offset) {
+
+//     return ((floor(coord+offset) * _Size) + 0.5) / _Size;
+
+// }
+
+
 void main() {
 
-    vec2 texelSize = vec2(1.0/64.0);
+    vec2 texelSize = vec2(1.0/_Size);
 
     vec3 initPos = texture2D(_InitPos, vUv).xyz;
 
