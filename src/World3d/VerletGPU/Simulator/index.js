@@ -18,6 +18,7 @@ const constrainBLTRKernel = require('./kernels/constrainBLTR.frag');
 const constrainBRTLKernel = require('./kernels/constrainBRTL.frag');
 
 import {params} from '../../../params.js';
+import { angle } from "../../../../vendor/ogl/src/math/functions/Vec3Func";
 
 export class Simulator {
 
@@ -65,12 +66,21 @@ export class Simulator {
                 this.positionData[positionDataIterator++] = this.data[origDataIterator++];
                 this.positionData[positionDataIterator++] = this.data[origDataIterator++];
                 this.positionData[positionDataIterator++] = this.data[origDataIterator++];
-               
+                
+                let corner = 0;
+
                 let isTopLeft = y === 0 && x === 0;
-                let isTopRight = y === 0 && x >= this.countX - 1;
+                let isTopRight = y === 0 && x === this.countX - 1;
+                let isBottomLeft = y === this.countY-1 && x === this.countX -1;
+                let isBottomRight = y === this.countY-1 && x === 0;
+
+                if(isTopLeft) corner = 1;
+                if(isTopRight) corner = 2;
+                if(isBottomLeft) corner = 3;
+                if(isBottomRight) corner = 4;
                
                 // this.positionData[positionDataIterator++] = (isTopLeft || isTopRight) ? 0.0 : 1.0;
-                this.positionData[positionDataIterator++] = 1.0;
+                this.positionData[positionDataIterator++] = corner;
                 // this.positionData[positionDataIterator++] = 1.0;
 
             }
@@ -86,15 +96,23 @@ export class Simulator {
         const prevPositionData = this.positionData.slice();
         let prevPosIterator = 0;
         origDataIterator = 0;
+        let twoPI = Math.PI * 2;
         // for(let y = 0; y < this.countY; y++) {
             
             for(let x = 0; x < this.countX*this.countY; x++) {
 
                 
-                let offsetx = Math.random() * 2.0 - 1.0;
-                let offsety = Math.random() * 2.0 - 1.0;
+                // let offsetx = Math.random() * 2.0 - 1.0;
+                // let offsety = Math.random() * 2.0 - 1.0;
+                // let offsetz = Math.random() * 2.0 - 1.0;
 
-                let offsetz = Math.random() * 2.0 - 1.0;
+                let angleX = Math.random() * 2.0 - 1.0;
+                let angleY = Math.random() * 2.0 - 1.0;
+                let angleZ = Math.random() * 2.0 - 1.0;
+
+                let offsetx = Math.cos(angleX) * Math.cos(angleX);
+                let offsety = Math.sin(angleY);
+                let offsetz = Math.cos(angleZ) * Math.sin(angleZ); 
 
                 prevPositionData[prevPosIterator++] += (offsetx*0.0);
                 prevPositionData[prevPosIterator++] += (offsety*0.0);
@@ -112,7 +130,8 @@ export class Simulator {
 
         this.positionSim = new GPGPU(this.gl, {
             data: this.positionData,
-            type: this.gl.FLOAT
+            type: this.gl.FLOAT,
+            // filtering: this.gl.N
         });
 
         const normalData = new Float32Array(this.countX*this.countY*4.0);
@@ -129,7 +148,8 @@ export class Simulator {
 
         this.normalSim = new GPGPU(this.gl, {
             data: normalData,
-            type: this.gl.FLOAT
+            type: this.gl.FLOAT,
+            // filtering: this.gl.LINEAR
         });
 
         this.restlengthCapture = new GPGPU(this.gl, {
@@ -407,8 +427,9 @@ export class Simulator {
 
         }
 
+            for(let i = 0; i < params.PHYSICS.STEPS; i++) {
 
-            // //HORIZONTAL CONSTRAINTS
+                            // //HORIZONTAL CONSTRAINTS
             this.positionSim.addPass({
                 fragment: constrainHorizontalKernel,
                 uniforms: constrainHorizontalFirstPassU
@@ -450,6 +471,8 @@ export class Simulator {
                 fragment: constrainBRTLKernel,
                 uniforms: constrainBRTLsecondPasssU
             });
+
+            }
 
     }
 
@@ -500,8 +523,8 @@ export class Simulator {
         // this.positionSim.passes[0].program.uniforms._Force.value.set(forceX * windForce, forceY*windForce,forceZ*windForce);
         if(isInteracting) {
             if(this.cornerUpdated === false) {
-                console.log('update corner')
-                this.positionSim.passes[0].program.uniforms._Corner.value = Math.floor(Math.random()*3);
+                const corner = (Math.floor(Math.random() * 4) + 1);
+                this.positionSim.passes[0].program.uniforms._Corner.value = corner;
                 this.cornerUpdated = true;
             }
         } else {

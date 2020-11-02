@@ -18,15 +18,9 @@ vec2 getCenterTexel(vec2 coord, vec2 offset) {
 
 }
 
-// vec2 getCenterTexel(vec2 coord, vec2 offset) {
-
-//     return ((floor(coord+offset) * _Size) + 0.5) / _Size;
-
-// }
-
 void main() {
 
-    vec3 pos = texture2D(_Positions, getCenterTexel(position, vec2(0.0))).xyz;
+    vec3 pos = texture2D(_Positions, (position + vec2(0.0))).xyz;
     vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
 
     gl_Position = projectionMatrix * mvPos;

@@ -37,9 +37,10 @@ export default class World3d {
         });
         this.gl = this.renderer.gl;
 
-        // this.gl.clearColor(0.9, 0.9, 0.9, 1);
+        // this.gl.clearColor(0.7, 0.7, 0.8, 1);
         // this.gl.clearColor(0.0, 0.5, 0.98, 1); //ghibli blue
-        this.gl.clearColor(0.0, 0.0, 0.0, 1);
+        this.gl.clearColor(0.83, 0.83, 0.83, 1);
+        // this.gl.clearColor(0.0, 0.0, 0.0, 1);
         this.gl.canvas.style.top = "0";
         this.gl.canvas.style.left = "0";
         this.gl.canvas.style.zIndex = "0";
@@ -54,7 +55,8 @@ export default class World3d {
         });
         this.camera.position.x = 0.0;
         this.camera.position.y = 0.0;
-        this.camera.position.z = 15.0;
+        // this.camera.position.z = 8.0;
+        this.camera.position.z = 7.0;
         // this.camera.lookAt([0.0, 0.0, 0.0]);
 
         this.orbitCamera = new Orbit(this.camera, {
@@ -171,7 +173,7 @@ export default class World3d {
         const dist = -this.camera.position.z / this.projectedInputPos.z;
 
         this.worldInputPos.copy(this.camera.position).add(this.projectedInputPos.multiply(dist));
-        this.worldInputPos.z = -this.inputPos.y * 10.0;
+        this.worldInputPos.z = -this.inputPos.y * 1.0;
 
     }
 
@@ -186,7 +188,7 @@ export default class World3d {
         this.camera.updateMatrixWorld();
         //  this.orbitCamera.update();
 
-        this.raycast.castMouse(this.camera, this.inputPos);
+        // this.raycast.castMouse(this.camera, this.inputPos);
         // this.verlet.isHit = false;
         // this.raycast.intersectBounds([this.verlet]);
 
@@ -195,7 +197,7 @@ export default class World3d {
 
         // this.positionQuad.Texture = this.verlet.simulator.positionSim.uniform.value;
         // this.prevPositionQuad.Texture = this.verlet.simulator.normalSim.uniform.value;
-        this.restlengthQuad.Texture = this.verlet.shadowPass.target.texture;
+        // this.restlengthQuad.Texture = this.verlet.shadowPass.target.texture;
 
         this.verlet.update({
             t: this.deltaTime,
@@ -210,15 +212,15 @@ export default class World3d {
             clear: true
         });
 
-        this.verlet.FlipFace();
+        // this.verlet.FlipFace();
 
-        this.render({
-            scene: this.scene,
-            camera: this.camera,
-            clear: false
-        });
+        // this.render({
+        //     scene: this.scene,
+        //     camera: this.camera,
+        //     clear: false
+        // });
 
-        this.verlet.FlipFace();
+        // this.verlet.FlipFace();
     }
 
     onResize() {

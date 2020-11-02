@@ -24,6 +24,10 @@ import {params} from '../../params.js';
 
 import {Simulator} from './Simulator/index.js';
 import { Camera } from "../../../vendor/ogl/src/core/Camera.js";
+import { Texture } from "../../../vendor/ogl/src/core/Texture.js";
+
+import cubemap from '../../../static/cubemap/*.jpg';
+
 
 const vertex = require("./shader/verlet.vert");
 const fragment = require("./shader/verlet.frag");
@@ -38,7 +42,7 @@ export class Verlet extends Mesh {
 
     this.initGeometry();
     this.initProgram();
-    this.initShadowPass();
+    // this.initShadowPass();
 
     this.timestep = 18.0 / 1000.0 //I suppose this is hardcoded delta time, from what I could gather from logging delta time
     this.timeStepSQ = this.timestep * this.timestep;
@@ -57,8 +61,8 @@ export class Verlet extends Mesh {
     this.widthSegments = params.CLOTH.SIZE-1;
     this.heightSegments = params.CLOTH.SIZE-1;
 
-    const width = 5.0;
-    const height = 5.0;
+    const width = 4.0;
+    const height = 4.0;
 
     const refGeometry = new Plane(this.gl, {
       width,
@@ -81,8 +85,8 @@ export class Verlet extends Mesh {
 
     this.simulator = new Simulator(this.gl, {
       data: position.data,
-      countX: this.widthSegments+1,
-      countY: this.heightSegments+1,
+      countX: params.CLOTH.SIZE,
+      countY: params.CLOTH.SIZE,
     });
 
     this.geometry = new Geometry(this.gl, {
@@ -101,7 +105,15 @@ export class Verlet extends Mesh {
 
   }
 
+
   initProgram() {
+
+    this.cubeMapTexture = new Texture(this.gl, {
+      target: this.gl.TEXTURE_CUBE_MAP,
+    });
+
+    this.loadCubeMap();
+
     const uniforms = {
       _Positions: {
         value: this.simulator.Positions
@@ -115,8 +127,11 @@ export class Verlet extends Mesh {
       _Size: {
         value: params.CLOTH.SIZE
       },
-      _RestLengths: {
-        value: this.simulator.RestLengthsDiagonal
+      _CubeMap: {
+        value: this.cubeMapTexture
+      },
+      _ShadowMapSize: {
+        value: params.SHADOW.SIZE
       },
       _ShadowTexelSize: {
         value: 1.0 / params.SHADOW.SIZE
@@ -130,24 +145,50 @@ export class Verlet extends Mesh {
       vertex,
       fragment,
       uniforms,
-      cullFace: this.gl.BACK,
+      // cullFace: this.gl.BACK,
+      cullFace: null,
       transparent: true
     });
   }
+
+      async loadCubeMap() {
+
+        function loadImage(src) {
+            return new Promise(res => {
+
+                const img = new Image();
+                img.onload = () => res(img);
+                img.src = src;
+
+            });
+        }
+
+        const images = await Promise.all([
+            loadImage(cubemap.posx),
+            loadImage(cubemap.negx),
+            loadImage(cubemap.posy),
+            loadImage(cubemap.negy),
+            loadImage(cubemap.posz),
+            loadImage(cubemap.negz),
+        ]);
+
+        this.cubeMapTexture.image = images;
+
+    }
 
   initShadowPass() {
 
     this.shadowCamera = new Camera(this.gl, {
         near: 1.0,
-        far: 30.0,
-        left: -10.0,
-        right: 10.0,
-        top: 10.0,
-        bottom: -10.0
+        far: 10.0,
+        left: -5,
+        right: 5.0,
+        top: 5.0,
+        bottom: -5.0
     });
 
 
-    this.shadowCamera.position.set(0.0, 20.0, 0.3);
+    this.shadowCamera.position.set(0.0, 5.0, 2.3);
     this.shadowCamera.lookAt([0.0, 0.0, 0.0]);
 
     this.shadowPass = new Shadow(this.gl, {light: this.shadowCamera, width: params.SHADOW.SIZE, height: params.SHADOW.SIZE});
@@ -173,7 +214,7 @@ export class Verlet extends Mesh {
       inputWorldPos
     });
 
-    this.shadowPass.render({scene});
+    // this.shadowPass.render({scene});
 
   }
 

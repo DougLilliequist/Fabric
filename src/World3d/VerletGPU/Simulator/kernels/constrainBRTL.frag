@@ -22,25 +22,13 @@ vec3 constrain(vec3 a, vec3 b, float restLength) {
 
 }
 
-vec2 getCenterTexel(vec2 coord, vec2 offset) {
-
-    return ((floor(coord * _Size) + 0.5) / (_Size)) + offset;
-
-}
-
-
-// vec2 getCenterTexel(vec2 coord, vec2 offset) {
-
-//     return ((floor(coord+offset) * _Size) + 0.5) / _Size;
-
-// }
-
 //inspired by:
 //https://pdfs.semanticscholar.org/4718/6dcbbc8ccc01c6f4143719d09ed5ab4395fb.pdf?_ga=2.107277378.1544954547.1603025794-293436447.1603025794
 
 void main() {
 
-    vec4 pos = texture2D(tMap, getCenterTexel(vUv, vec2(0.0)));
+    // vec4 pos = texture2D(tMap, getCenterTexel(vUv, vec2(0.0)));
+    vec4 pos = texture2D(tMap, (vUv));
     
     //r = top right
     //g = bottom left
@@ -58,13 +46,12 @@ void main() {
     bool constrainA = modFloorCoord.x == mix(1.0, 0.0, _Flip) && (vUv.y < 1.0 - texelSize.y) && (vUv.x > texelSize.x);
     bool constrainB = modFloorCoord.x == mix(0.0, 1.0, _Flip) && (vUv.y > texelSize.y) && (vUv.x < 1.0 - texelSize.x);
 
-    vec3 x1 = texture2D(tMap, getCenterTexel(vUv, vec2(-texelSize.x, texelSize.y))).xyz;
-    vec3 x2 = texture2D(tMap, getCenterTexel(vUv, vec2(texelSize.x, -texelSize.y))).xyz;
+    vec3 x1 = texture2D(tMap, (vUv + vec2(-texelSize.x, texelSize.y))).xyz;
+    vec3 x2 = texture2D(tMap, (vUv + vec2(texelSize.x, -texelSize.y))).xyz;
 
     if(constrainA) displacement = constrain(pos.xyz, x1, restLength.x);
     if(constrainB) displacement = constrain(pos.xyz, x2, restLength.y);
 
-    displacement *= pos.w;
     pos.xyz += displacement;
 
     gl_FragColor = pos;

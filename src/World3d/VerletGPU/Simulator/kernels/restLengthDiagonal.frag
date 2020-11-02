@@ -5,19 +5,6 @@ uniform float _Size;
 
 varying vec2 vUv;
 
-vec2 getCenterTexel(vec2 coord, vec2 offset) {
-
-    return ((floor(coord * _Size) + 0.5) / (_Size)) + offset;
-
-}
-
-
-// vec2 getCenterTexel(vec2 coord, vec2 offset) {
-
-//     return ((floor(coord+offset) * _Size) + 0.5) / _Size;
-
-// }
-
 
 void main() {
 
@@ -25,10 +12,10 @@ void main() {
 
     vec3 initPos = texture2D(_InitPos, vUv).xyz;
 
-    vec3 tRNeighbour = texture2D(_InitPos, getCenterTexel(vUv, vec2(texelSize.x, texelSize.y))).xyz;
-    vec3 bLNeighbour = texture2D(_InitPos, getCenterTexel(vUv, vec2(-texelSize.x, -texelSize.y))).xyz;
-    vec3 tLNeighbour = texture2D(_InitPos, getCenterTexel(vUv, vec2(-texelSize.x, texelSize.y))).xyz;
-    vec3 bRNeighbour = texture2D(_InitPos, getCenterTexel(vUv, vec2(texelSize.x, -texelSize.y))).xyz;
+    vec3 tRNeighbour = texture2D(_InitPos, (vUv + vec2(texelSize.x, texelSize.y))).xyz;
+    vec3 bLNeighbour = texture2D(_InitPos, (vUv + vec2(-texelSize.x, -texelSize.y))).xyz;
+    vec3 tLNeighbour = texture2D(_InitPos, (vUv + vec2(-texelSize.x, texelSize.y))).xyz;
+    vec3 bRNeighbour = texture2D(_InitPos, (vUv + vec2(texelSize.x, -texelSize.y))).xyz;
 
     float trDist = 0.0;
     float tlDist = 0.0;
@@ -58,7 +45,6 @@ void main() {
         brDist = length(bRNeighbour - initPos );
     } 
 
-    // gl_FragColor = vec4(blDist, trDist, brDist, tlDist);
     gl_FragColor = vec4(trDist, blDist, tlDist, brDist);
     
 }

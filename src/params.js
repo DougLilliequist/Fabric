@@ -2,15 +2,19 @@ export const params = {
 
     PHYSICS: {
 
-        STIFFNESS: 0.4,
+        // STIFFNESS: 0.35,
+        // STIFFNESS: 0.13,
+        STIFFNESS: 0.5,
         MAX_BOUNDS: 2.0,
         TIMESTEP: 0.01,
-        CLAMP: 0.0
+        // CLAMP: 0.001
+        CLAMP: 0.0,
+        STEPS: 1
     },
 
     CLOTH: {
 
-        SIZE: 64
+        SIZE: 128
 
     },
 
@@ -23,8 +27,9 @@ export const params = {
     },
 
     SHADOW: {
-        SIZE: 1024,
-        BIAS: 0.005
+        SIZE: 1024 * 2.0,
+        // BIAS: 0.005
+        BIAS: 0.01
     }
 
 }
