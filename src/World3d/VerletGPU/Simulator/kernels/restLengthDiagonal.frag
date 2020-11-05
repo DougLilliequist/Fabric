@@ -19,7 +19,6 @@ void main() {
 
     float trDist = 0.0;
     float tlDist = 0.0;
-
     float brDist = 0.0;
     float blDist = 0.0;
 

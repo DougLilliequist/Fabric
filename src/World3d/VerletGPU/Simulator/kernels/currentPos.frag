@@ -5,15 +5,8 @@ uniform float _Size;
 
 varying vec2 vUv;
 
-
-vec2 getCenterTexel(vec2 coord, vec2 offset) {
-
-    return ((floor(coord * _Size) + 0.5) / (_Size)) + offset;
-
-}
- 
 void main() {
 
-    gl_FragColor = texture2D(_Positions,(vUv));
+    gl_FragColor = texture2D(_Positions,vUv);
 
 }

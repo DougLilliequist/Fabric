@@ -3,13 +3,13 @@ export const params = {
     PHYSICS: {
 
         // STIFFNESS: 0.35,
-        // STIFFNESS: 0.13,
-        STIFFNESS: 0.5,
+         STIFFNESS: 0.5,
+       // STIFFNESS: 0.2,
         MAX_BOUNDS: 2.0,
         TIMESTEP: 0.01,
         // CLAMP: 0.001
         CLAMP: 0.0,
-        STEPS: 1
+        STEPS: 2
     },
 
     CLOTH: {

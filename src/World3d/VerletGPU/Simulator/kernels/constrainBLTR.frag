@@ -48,8 +48,8 @@ void main() {
     bool constrainA = modFloorCoord.x == mix(0.0, 1.0, _Flip) && (vUv.y < 1.0 - texelSize.y) && (vUv.x < 1.0 - texelSize.x);
     bool constrainB = modFloorCoord.x == mix(1.0, 0.0, _Flip) && (vUv.y > texelSize.y) && (vUv.x > texelSize.x);
 
-    vec3 x1 = texture2D(tMap, (vUv + vec2(texelSize.x, texelSize.y))).xyz;
-    vec3 x2 = texture2D(tMap, (vUv + vec2(-texelSize.x, -texelSize.y))).xyz;
+    vec3 x1 = texture2D(tMap, vUv + vec2(texelSize.x, texelSize.y)).xyz;
+    vec3 x2 = texture2D(tMap, vUv + vec2(-texelSize.x, -texelSize.y)).xyz;
 
     if(constrainA) displacement = constrain(pos.xyz, x1, restLength.x);
     if(constrainB) displacement = constrain(pos.xyz, x2, restLength.y);

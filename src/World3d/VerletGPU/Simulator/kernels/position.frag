@@ -15,6 +15,7 @@ varying vec2 vUv;
 
 #define INERTIA 0.9998
 // #define INERTIA 0.998
+// #define INERTIA 0.9995
 // #define INERTIA 0.997
 // #define INERTIA 0.9998
 #define timestepSq 0.015*0.015
@@ -165,38 +166,31 @@ vec2 getCenterTexel(vec2 coord, vec2 offset) {
 }
 
 void main() {
-
-    // vec4 currentPos = texture2D(_CurrentPos, getCenterTexel(vUv, vec2(0.0)));
-    // vec3 prevPos = texture2D(_PrevPos, getCenterTexel(vUv, vec2(0.0))).xyz;
     
 
-    vec4 currentPos = texture2D(_CurrentPos, (vUv));
-    vec3 prevPos = texture2D(_PrevPos, (vUv)).xyz;
+    vec4 currentPos = texture2D(_CurrentPos, vUv);
+    vec3 prevPos = texture2D(_PrevPos, vUv).xyz;
     vec3 delta = INERTIA * (currentPos.xyz-prevPos);
 
     vec3 acc = vec3(0.0);
 
     vec3 normal = texture2D(_Normal, vUv).xyz;
-    // vec3 windForce = normalize(normal) * dot(normal, _Force) * timestepSq;
-    // delta += windForce;
 
-    // vec3 curlNoiseForce = curlNoise((currentPos.xyz *0.337) + _Time * 0.2) * 0.5;
-    vec3 curlNoiseForce = curlNoise((currentPos.xyz *0.537) + _Time * 0.2) * 0.5;
+    vec3 curlNoiseForce = curlNoise((currentPos.xyz *0.437) + _Time * 0.4) * 0.85;
+    // vec3 curlNoiseForce = curlNoise((currentPos.xyz *0.137) + _Time * 0.2) * 0.65;
     curlNoiseForce = normal * dot(normal, curlNoiseForce);
 
     if(_IsInteracting && currentPos.w == _Corner) {
 
             vec3 delta = _InputWorldPos - currentPos.xyz;
-        //    currentPos.xyz += normalize(delta) * 2.0 * smoothstep(0.0, 0.8, length(delta));
-           currentPos.xyz += (delta) * 0.35 * smoothstep(0.0, 0.8 * 0.8, dot(delta, delta));
-        //    acc.xyz += (delta) * smoothstep(0.0, 0.8 * 0.8, dot(delta, delta)) * 3000.0;
-        //    currentPos.xyz += (delta) * 0.3 * smoothstep(0.0, 0.8, length(delta));
+            currentPos.xyz += delta * 0.5 * smoothstep(0.0, 1.0, dot(delta, delta));
+
 
     } else {
         
         acc += curlNoiseForce;
-        // acc += normalize(currentPos.xyz) * (dot(currentPos.xyz, currentPos.xyz) - 1.0) * -0.5 * 0.5;
-        acc -= normalize(currentPos.xyz) * 0.1;
+        acc -= normalize(currentPos.xyz) * 0.08;
+        // acc -= normalize(currentPos.xyz) * (dot(currentPos.xyz, currentPos.xyz) - 4.0) * -0.01;
 
     }
 

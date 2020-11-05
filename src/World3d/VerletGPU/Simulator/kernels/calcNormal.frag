@@ -12,11 +12,11 @@ void main() {
 
     vec2 texelSize = vec2(1.0/_Size);
 
-    vec3 pos = texture2D(_Position, (vUv)).xyz;
-    vec3 rNeighbour = texture2D(_Position, (vUv + vec2(texelSize.x, 0.0))).xyz;
-    vec3 lNeighbour = texture2D(_Position, (vUv + vec2(-texelSize.x, 0.0))).xyz;
-    vec3 tNeighbour = texture2D(_Position, (vUv + vec2(0.0, texelSize.y))).xyz;
-    vec3 bNeighbour = texture2D(_Position, (vUv + vec2(0.0, -texelSize.y))).xyz;
+    vec3 pos = texture2D(_Position, vUv).xyz;
+    vec3 rNeighbour = texture2D(_Position, vUv + vec2(texelSize.x, 0.0)).xyz;
+    vec3 lNeighbour = texture2D(_Position, vUv + vec2(-texelSize.x, 0.0)).xyz;
+    vec3 tNeighbour = texture2D(_Position, vUv + vec2(0.0, texelSize.y)).xyz;
+    vec3 bNeighbour = texture2D(_Position, vUv + vec2(0.0, -texelSize.y)).xyz;
 
     vec3 tangent = vec3(0.0);
     vec3 biNormal = vec3(0.0);
