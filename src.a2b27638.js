@@ -7286,10 +7286,10 @@ class Simulator {
 exports.Simulator = Simulator;
 },{"../../../../vendor/ogl/src/core/Program":"vendor/ogl/src/core/Program.js","../../../../vendor/ogl/src/math/Vec2":"vendor/ogl/src/math/Vec2.js","../../../../vendor/ogl/src/core/Texture":"vendor/ogl/src/core/Texture.js","../../../../vendor/ogl/src/math/Vec3":"vendor/ogl/src/math/Vec3.js","../../../../vendor/ogl/src/extras/GPGPU":"vendor/ogl/src/extras/GPGPU.js","./kernels/prevPos.frag":"src/World3d/VerletGPU/Simulator/kernels/prevPos.frag","./kernels/currentPos.frag":"src/World3d/VerletGPU/Simulator/kernels/currentPos.frag","./kernels/position.frag":"src/World3d/VerletGPU/Simulator/kernels/position.frag","./kernels/calcNormal.frag":"src/World3d/VerletGPU/Simulator/kernels/calcNormal.frag","./kernels/restLength.frag":"src/World3d/VerletGPU/Simulator/kernels/restLength.frag","./kernels/restLengthDiagonal.frag":"src/World3d/VerletGPU/Simulator/kernels/restLengthDiagonal.frag","./kernels/constrainHorizontal.frag":"src/World3d/VerletGPU/Simulator/kernels/constrainHorizontal.frag","./kernels/constrainVertical.frag":"src/World3d/VerletGPU/Simulator/kernels/constrainVertical.frag","./kernels/constrainBLTR.frag":"src/World3d/VerletGPU/Simulator/kernels/constrainBLTR.frag","./kernels/constrainBRTL.frag":"src/World3d/VerletGPU/Simulator/kernels/constrainBRTL.frag","../../../params.js":"src/params.js"}],"static/cubemap/negx.jpg":[function(require,module,exports) {
 module.exports = "/negx.597b3bc3.jpg";
-},{}],"static/cubemap/negy.jpg":[function(require,module,exports) {
-module.exports = "/negy.25d1513d.jpg";
 },{}],"static/cubemap/negz.jpg":[function(require,module,exports) {
 module.exports = "/negz.ad71b1dd.jpg";
+},{}],"static/cubemap/negy.jpg":[function(require,module,exports) {
+module.exports = "/negy.25d1513d.jpg";
 },{}],"static/cubemap/posx.jpg":[function(require,module,exports) {
 module.exports = "/posx.fb1524ba.jpg";
 },{}],"static/cubemap/posy.jpg":[function(require,module,exports) {
@@ -7299,13 +7299,13 @@ module.exports = "/posz.d0964d39.jpg";
 },{}],"static/cubemap/*.jpg":[function(require,module,exports) {
 module.exports = {
   "negx": require("./negx.jpg"),
-  "negy": require("./negy.jpg"),
   "negz": require("./negz.jpg"),
+  "negy": require("./negy.jpg"),
   "posx": require("./posx.jpg"),
   "posy": require("./posy.jpg"),
   "posz": require("./posz.jpg")
 };
-},{"./negx.jpg":"static/cubemap/negx.jpg","./negy.jpg":"static/cubemap/negy.jpg","./negz.jpg":"static/cubemap/negz.jpg","./posx.jpg":"static/cubemap/posx.jpg","./posy.jpg":"static/cubemap/posy.jpg","./posz.jpg":"static/cubemap/posz.jpg"}],"src/World3d/VerletGPU/shader/verlet.vert":[function(require,module,exports) {
+},{"./negx.jpg":"static/cubemap/negx.jpg","./negz.jpg":"static/cubemap/negz.jpg","./negy.jpg":"static/cubemap/negy.jpg","./posx.jpg":"static/cubemap/posx.jpg","./posy.jpg":"static/cubemap/posy.jpg","./posz.jpg":"static/cubemap/posz.jpg"}],"src/World3d/VerletGPU/shader/verlet.vert":[function(require,module,exports) {
 module.exports = "precision highp float;\n#define GLSLIFY 1\n\nattribute vec2 position;\nattribute vec2 uv;\n\nuniform sampler2D _Positions;\nuniform sampler2D _Normals;\n\nuniform mat4 projectionMatrix;\nuniform mat4 modelViewMatrix;\nuniform mat3 normalMatrix;\n\nvarying vec2 vUv;\nvarying vec3 vPos;\nvarying vec3 vNormal;\n\nuniform float _Size;\n\n#define LIGHT vec3(0.0, 5.0, 2.3)\n\nvoid main() {\n\n    vec3 pos = texture2D(_Positions, (position + vec2(0.0))).xyz;\n    vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);\n    vec3 norm = texture2D(_Normals, (position + vec2(0.0))).xyz;\n\n    gl_Position = projectionMatrix * mvPos;\n    vUv = uv;\n    vPos = pos.xyz;\n    vNormal = normalMatrix * norm;\n\n}";
 },{}],"src/World3d/VerletGPU/shader/verlet.frag":[function(require,module,exports) {
 module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform samplerCube _CubeMap;\n\nuniform vec3 cameraPosition;\n\nvarying vec3 vNormal;\nvarying vec3 vPos;\nvarying vec2 vUv;\n\nvoid main() {\n\n    vec3 normal = normalize(vNormal);    \n    vec3 reflectV = reflect(normalize(vPos - cameraPosition), normal);\n    vec3 col = textureCube(_CubeMap, reflectV).xyz;\n    gl_FragColor = vec4(col, 1.0);\n\n}";
@@ -7633,8 +7633,36 @@ var _World3d = _interopRequireDefault(require("./World3d"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
 class App {
   constructor() {
+    _defineProperty(this, "onMouseDown", e => {
+      this.World3d.onMouseDown(e);
+      this.hideCTA();
+    });
+
+    _defineProperty(this, "onMouseMove", e => {
+      this.World3d.onMouseMove(e);
+    });
+
+    _defineProperty(this, "onMouseUp", e => {
+      this.World3d.onMouseUp(e);
+    });
+
+    _defineProperty(this, "onResize", () => {
+      this.World3d.onResize();
+    });
+
+    _defineProperty(this, "update", () => {
+      window.requestAnimationFrame(() => this.update());
+      this.time = Date.now();
+      let tmpTime = this.time;
+      this.deltaTime = (this.time - this.prevTime) / 1000.0;
+      this.prevTime = tmpTime;
+      this.World3d.update(this.deltaTime);
+    });
+
     this.World3d = new _World3d.default();
     this.initEvents();
     this.start();
@@ -7655,20 +7683,6 @@ class App {
     this.update();
   }
 
-  onMouseDown = e => {
-    this.World3d.onMouseDown(e);
-    this.hideCTA();
-  };
-  onMouseMove = e => {
-    this.World3d.onMouseMove(e);
-  };
-  onMouseUp = e => {
-    this.World3d.onMouseUp(e);
-  };
-  onResize = () => {
-    this.World3d.onResize();
-  };
-
   hideCTA() {
     if (this.ctaHidden === false) {
       this.ctaHidden = true;
@@ -7676,14 +7690,6 @@ class App {
     }
   }
 
-  update = () => {
-    window.requestAnimationFrame(() => this.update());
-    this.time = Date.now();
-    let tmpTime = this.time;
-    this.deltaTime = (this.time - this.prevTime) / 1000.0;
-    this.prevTime = tmpTime;
-    this.World3d.update(this.deltaTime);
-  };
 }
 
 exports.App = App;
@@ -7717,7 +7723,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "50857" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "58159" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
