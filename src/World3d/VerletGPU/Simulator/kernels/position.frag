@@ -176,14 +176,14 @@ void main() {
 
     vec3 normal = texture2D(_Normal, vUv).xyz;
 
-    vec3 curlNoiseForce = curlNoise((currentPos.xyz *0.437) + _Time * 0.4) * 0.85;
+    vec3 curlNoiseForce = curlNoise((currentPos.xyz *0.337) + _Time * 0.4) * 0.85;
     // vec3 curlNoiseForce = curlNoise((currentPos.xyz *0.137) + _Time * 0.2) * 0.65;
     curlNoiseForce = normal * dot(normal, curlNoiseForce);
 
     if(_IsInteracting && currentPos.w == _Corner) {
 
             vec3 delta = _InputWorldPos - currentPos.xyz;
-            currentPos.xyz += delta * 0.5 * smoothstep(0.0, 1.0, dot(delta, delta));
+            currentPos.xyz += delta * 0.5 * smoothstep(0.0, 2.0, dot(delta, delta));
 
 
     } else {

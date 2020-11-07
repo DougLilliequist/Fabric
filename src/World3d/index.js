@@ -25,8 +25,7 @@ import { Vec3 } from "../../vendor/ogl/src/math/Vec3.js";
 export default class World3d {
     constructor() {
         this.init();
-        this.initEvents();
-        this.start();
+        this.initInputParams();
     }
 
     init() {
@@ -37,10 +36,7 @@ export default class World3d {
         });
         this.gl = this.renderer.gl;
 
-        // this.gl.clearColor(0.7, 0.7, 0.8, 1);
-        // this.gl.clearColor(0.0, 0.5, 0.98, 1); //ghibli blue
         this.gl.clearColor(0.8, 0.8, 0.83, 1);
-        // this.gl.clearColor(0.0, 0.0, 0.0, 1);
         this.gl.canvas.style.top = "0";
         this.gl.canvas.style.left = "0";
         this.gl.canvas.style.zIndex = "0";
@@ -55,9 +51,7 @@ export default class World3d {
         });
         this.camera.position.x = 0.0;
         this.camera.position.y = 0.0;
-        // this.camera.position.z = 8.0;
         this.camera.position.z = 7.0;
-        // this.camera.lookAt([0.0, 0.0, 0.0]);
 
         this.orbitCamera = new Orbit(this.camera, {
             element: this.gl.canvas
@@ -69,7 +63,7 @@ export default class World3d {
         this.initDebug();
     }
 
-    initEvents() {
+    initInputParams() {
 
         this.inputPos = new Vec3(0.0, 0.0, 0.5);
         this.projectedInputPos = new Vec3(0.0, 0.0, 0.5);
@@ -77,13 +71,9 @@ export default class World3d {
         this.raycast = new Raycast(this.gl);
         this.isInteracting = false;
 
-        window.addEventListener("resize", this.onResize.bind(this));
-        window.addEventListener('mousedown', this.onMouseDown);
-        window.addEventListener('mousemove', this.onMouseMove);
-        window.addEventListener('mouseup', this.onMouseUp);
     }
 
-    onMouseDown = e => {
+    onMouseDown(e) {
 
         this.isInteracting = true;
         this.inputPos.x = (e.clientX / window.innerWidth) * 2.0 - 1.0;
@@ -91,7 +81,7 @@ export default class World3d {
 
     }
 
-    onMouseMove = e => {
+    onMouseMove(e) {
 
         if(this.isInteracting === false) return;
 
@@ -100,7 +90,7 @@ export default class World3d {
 
     }
 
-    onMouseUp = () => {
+    onMouseUp(e) {
 
         this.isInteracting = false;
 
@@ -133,13 +123,6 @@ export default class World3d {
 
     }
 
-    start() {
-        this.time = Date.now();
-        this.prevTime = this.time;
-
-        this.update();
-    }
-
     render({
         scene,
         camera = null,
@@ -166,13 +149,7 @@ export default class World3d {
 
     }
 
-    update() {
-        window.requestAnimationFrame(() => this.update());
-
-        this.time = Date.now();
-        let tmpTime = this.time;
-        this.deltaTime = (this.time - this.prevTime) / 1000.0;
-        this.prevTime = tmpTime;
+    update(dt) {
 
         this.camera.updateMatrixWorld();
         //  this.orbitCamera.update();
@@ -180,7 +157,7 @@ export default class World3d {
         this.calcScreenToWorldPos();
 
         this.verlet.update({
-            t: this.deltaTime,
+            t: dt,
             isInteracting: this.isInteracting,
             inputWorldPos: this.worldInputPos,
             scene: this.scene
