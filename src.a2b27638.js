@@ -6398,7 +6398,7 @@ exports.params = void 0;
 const params = {
   PHYSICS: {
     // STIFFNESS: 0.35,
-    STIFFNESS: 0.4,
+    STIFFNESS: 0.5,
     // STIFFNESS: 0.2,
     MAX_BOUNDS: 2.0,
     TIMESTEP: 0.01,
@@ -7577,7 +7577,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "53654" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "54054" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
