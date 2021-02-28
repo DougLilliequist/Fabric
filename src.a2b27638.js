@@ -6401,18 +6401,19 @@ const params = {
     STIFFNESS: 0.5,
     // STIFFNESS: 0.2,
     MAX_BOUNDS: 2.0,
-    TIMESTEP: 0.01,
-    CLAMP: 0.005,
+    TIMESTEP: 0.0016,
+    // CLAMP: 0.03,
+    CLAMP: 0.01,
     // CLAMP: 0.0,
-    STEPS: 1
+    STEPS: 16
   },
   CLOTH: {
     SIZE: 128
   },
   NOISE: {
-    SPATIAL_FREQ: 0.4,
+    SPATIAL_FREQ: 10.9,
     TEMPORAL_FREQ: 0.1,
-    AMP: 10.0
+    AMP: 0.1
   },
   SHADOW: {
     SIZE: 1024 * 2.0,
@@ -6737,21 +6738,29 @@ module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D
 },{}],"src/World3d/VerletGPU/Simulator/kernels/currentPos.frag":[function(require,module,exports) {
 module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D _Positions;\nuniform float _Size;\n\nvarying vec2 vUv;\n\nvoid main() {\n\n    gl_FragColor = texture2D(_Positions,vUv);\n\n}";
 },{}],"src/World3d/VerletGPU/Simulator/kernels/position.frag":[function(require,module,exports) {
-module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D _CurrentPos;\nuniform sampler2D _PrevPos;\nuniform sampler2D _Normal;\nuniform vec3 _Force;\nuniform float _Time;\n\nuniform bool _IsInteracting;\nuniform vec3 _InputWorldPos;\nuniform float _Corner;\nuniform float _Size;\n\nvarying vec2 vUv;\n\n#define INERTIA 0.9998\n// #define INERTIA 0.998\n// #define INERTIA 0.9995\n// #define INERTIA 0.997\n// #define INERTIA 0.9998\n#define timestepSq 0.015*0.015\n#define EPS 0.00001\n\n//\n// Description : Array and textureless GLSL 2D/3D/4D simplex \n//               noise functions.\n//      Author : Ian McEwan, Ashima Arts.\n//  Maintainer : stegu\n//     Lastmod : 20110822 (ijm)\n//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.\n//               Distributed under the MIT License. See LICENSE file.\n//               https://github.com/ashima/webgl-noise\n//               https://github.com/stegu/webgl-noise\n// \n\nvec3 mod289(vec3 x) {\n  return x - floor(x * (1.0 / 289.0)) * 289.0;\n}\n\nvec4 mod289(vec4 x) {\n  return x - floor(x * (1.0 / 289.0)) * 289.0;\n}\n\nvec4 permute(vec4 x) {\n     return mod289(((x*34.0)+1.0)*x);\n}\n\nvec4 taylorInvSqrt(vec4 r)\n{\n  return 1.79284291400159 - 0.85373472095314 * r;\n}\n\nfloat snoise(vec3 v)\n  { \n  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;\n  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);\n\n// First corner\n  vec3 i  = floor(v + dot(v, C.yyy) );\n  vec3 x0 =   v - i + dot(i, C.xxx) ;\n\n// Other corners\n  vec3 g = step(x0.yzx, x0.xyz);\n  vec3 l = 1.0 - g;\n  vec3 i1 = min( g.xyz, l.zxy );\n  vec3 i2 = max( g.xyz, l.zxy );\n\n  //   x0 = x0 - 0.0 + 0.0 * C.xxx;\n  //   x1 = x0 - i1  + 1.0 * C.xxx;\n  //   x2 = x0 - i2  + 2.0 * C.xxx;\n  //   x3 = x0 - 1.0 + 3.0 * C.xxx;\n  vec3 x1 = x0 - i1 + C.xxx;\n  vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y\n  vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y\n\n// Permutations\n  i = mod289(i); \n  vec4 p = permute( permute( permute( \n             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))\n           + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) \n           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));\n\n// Gradients: 7x7 points over a square, mapped onto an octahedron.\n// The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)\n  float n_ = 0.142857142857; // 1.0/7.0\n  vec3  ns = n_ * D.wyz - D.xzx;\n\n  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)\n\n  vec4 x_ = floor(j * ns.z);\n  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)\n\n  vec4 x = x_ *ns.x + ns.yyyy;\n  vec4 y = y_ *ns.x + ns.yyyy;\n  vec4 h = 1.0 - abs(x) - abs(y);\n\n  vec4 b0 = vec4( x.xy, y.xy );\n  vec4 b1 = vec4( x.zw, y.zw );\n\n  //vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;\n  //vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;\n  vec4 s0 = floor(b0)*2.0 + 1.0;\n  vec4 s1 = floor(b1)*2.0 + 1.0;\n  vec4 sh = -step(h, vec4(0.0));\n\n  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;\n  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;\n\n  vec3 p0 = vec3(a0.xy,h.x);\n  vec3 p1 = vec3(a0.zw,h.y);\n  vec3 p2 = vec3(a1.xy,h.z);\n  vec3 p3 = vec3(a1.zw,h.w);\n\n//Normalise gradients\n  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));\n  p0 *= norm.x;\n  p1 *= norm.y;\n  p2 *= norm.z;\n  p3 *= norm.w;\n\n// Mix final noise value\n  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);\n  m = m * m;\n  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), \n                                dot(p2,x2), dot(p3,x3) ) );\n  }\n\nvec3 snoiseVec3( vec3 x ){\n\n  float s  = snoise(vec3( x ));\n  float s1 = snoise(vec3( x.y - 19.1 , x.z + 33.4 , x.x + 47.2 ));\n  float s2 = snoise(vec3( x.z + 74.2 , x.x - 124.5 , x.y + 99.4 ));\n  vec3 c = vec3( s , s1 , s2 );\n  return c;\n\n}\n\nvec3 curlNoise( vec3 p ){\n  \n  const float e = .1;\n  vec3 dx = vec3( e   , 0.0 , 0.0 );\n  vec3 dy = vec3( 0.0 , e   , 0.0 );\n  vec3 dz = vec3( 0.0 , 0.0 , e   );\n\n  vec3 p_x0 = snoiseVec3( p - dx );\n  vec3 p_x1 = snoiseVec3( p + dx );\n  vec3 p_y0 = snoiseVec3( p - dy );\n  vec3 p_y1 = snoiseVec3( p + dy );\n  vec3 p_z0 = snoiseVec3( p - dz );\n  vec3 p_z1 = snoiseVec3( p + dz );\n\n  float x = p_y1.z - p_y0.z - p_z1.y + p_z0.y;\n  float y = p_z1.x - p_z0.x - p_x1.z + p_x0.z;\n  float z = p_x1.y - p_x0.y - p_y1.x + p_y0.x;\n\n  const float divisor = 1.0 / ( 2.0 * e );\n  return normalize( vec3( x , y , z ) * divisor );\n\n}\n\nvec2 getCenterTexel(vec2 coord, vec2 offset) {\n\n    return (floor((coord+offset) * (_Size-EPS)) + 0.5) / _Size;\n\n}\n\nvoid main() {\n    \n\n    vec4 currentPos = texture2D(_CurrentPos, vUv);\n    vec3 prevPos = texture2D(_PrevPos, vUv).xyz;\n    vec3 delta = INERTIA * (currentPos.xyz-prevPos);\n\n    vec3 acc = vec3(0.0);\n\n    vec3 normal = texture2D(_Normal, vUv).xyz;\n\n    vec3 curlNoiseForce = curlNoise((currentPos.xyz *0.337) + _Time * 0.4) * 0.85;\n    // vec3 curlNoiseForce = curlNoise((currentPos.xyz *0.137) + _Time * 0.2) * 0.65;\n    curlNoiseForce = normal * dot(normal, curlNoiseForce);\n\n    if(_IsInteracting && currentPos.w == _Corner) {\n\n            vec3 delta = _InputWorldPos - currentPos.xyz;\n            currentPos.xyz += delta * 0.5 * smoothstep(0.0, 2.0, dot(delta, delta));\n\n    } else {\n        \n        acc += curlNoiseForce;\n        acc -= normalize(currentPos.xyz) * 0.08;\n        // acc -= normalize(currentPos.xyz) * (dot(currentPos.xyz, currentPos.xyz) - 4.0) * -0.01;\n\n    }\n\n    acc *= timestepSq;\n    delta += acc;\n    currentPos.xyz += delta;\n\n    gl_FragColor = currentPos;\n\n}";
+module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D _CurrentPos;\nuniform sampler2D _PrevPos;\nuniform sampler2D _Normal;\nuniform vec3 _Force;\nuniform float _Time;\n\nuniform bool _IsInteracting;\nuniform vec3 _InputWorldPos;\nuniform float _Corner;\nuniform float _Size;\n\nvarying vec2 vUv;\n\n#define INERTIA 0.9997\n// #define INERTIA 0.998\n// #define INERTIA 0.9995\n// #define INERTIA 0.997\n// #define INERTIA 0.9998\n#define timestepSq 0.016*0.016\n#define EPS 0.00001\n\n//\n// Description : Array and textureless GLSL 2D/3D/4D simplex \n//               noise functions.\n//      Author : Ian McEwan, Ashima Arts.\n//  Maintainer : stegu\n//     Lastmod : 20110822 (ijm)\n//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.\n//               Distributed under the MIT License. See LICENSE file.\n//               https://github.com/ashima/webgl-noise\n//               https://github.com/stegu/webgl-noise\n// \n\nvec3 mod289(vec3 x) {\n  return x - floor(x * (1.0 / 289.0)) * 289.0;\n}\n\nvec4 mod289(vec4 x) {\n  return x - floor(x * (1.0 / 289.0)) * 289.0;\n}\n\nvec4 permute(vec4 x) {\n     return mod289(((x*34.0)+1.0)*x);\n}\n\nvec4 taylorInvSqrt(vec4 r)\n{\n  return 1.79284291400159 - 0.85373472095314 * r;\n}\n\nfloat snoise(vec3 v)\n  { \n  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;\n  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);\n\n// First corner\n  vec3 i  = floor(v + dot(v, C.yyy) );\n  vec3 x0 =   v - i + dot(i, C.xxx) ;\n\n// Other corners\n  vec3 g = step(x0.yzx, x0.xyz);\n  vec3 l = 1.0 - g;\n  vec3 i1 = min( g.xyz, l.zxy );\n  vec3 i2 = max( g.xyz, l.zxy );\n\n  //   x0 = x0 - 0.0 + 0.0 * C.xxx;\n  //   x1 = x0 - i1  + 1.0 * C.xxx;\n  //   x2 = x0 - i2  + 2.0 * C.xxx;\n  //   x3 = x0 - 1.0 + 3.0 * C.xxx;\n  vec3 x1 = x0 - i1 + C.xxx;\n  vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y\n  vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y\n\n// Permutations\n  i = mod289(i); \n  vec4 p = permute( permute( permute( \n             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))\n           + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) \n           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));\n\n// Gradients: 7x7 points over a square, mapped onto an octahedron.\n// The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)\n  float n_ = 0.142857142857; // 1.0/7.0\n  vec3  ns = n_ * D.wyz - D.xzx;\n\n  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)\n\n  vec4 x_ = floor(j * ns.z);\n  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)\n\n  vec4 x = x_ *ns.x + ns.yyyy;\n  vec4 y = y_ *ns.x + ns.yyyy;\n  vec4 h = 1.0 - abs(x) - abs(y);\n\n  vec4 b0 = vec4( x.xy, y.xy );\n  vec4 b1 = vec4( x.zw, y.zw );\n\n  //vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;\n  //vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;\n  vec4 s0 = floor(b0)*2.0 + 1.0;\n  vec4 s1 = floor(b1)*2.0 + 1.0;\n  vec4 sh = -step(h, vec4(0.0));\n\n  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;\n  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;\n\n  vec3 p0 = vec3(a0.xy,h.x);\n  vec3 p1 = vec3(a0.zw,h.y);\n  vec3 p2 = vec3(a1.xy,h.z);\n  vec3 p3 = vec3(a1.zw,h.w);\n\n//Normalise gradients\n  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));\n  p0 *= norm.x;\n  p1 *= norm.y;\n  p2 *= norm.z;\n  p3 *= norm.w;\n\n// Mix final noise value\n  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);\n  m = m * m;\n  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), \n                                dot(p2,x2), dot(p3,x3) ) );\n  }\n\nvec3 snoiseVec3( vec3 x ){\n\n  float s  = snoise(vec3( x ));\n  float s1 = snoise(vec3( x.y - 19.1 , x.z + 33.4 , x.x + 47.2 ));\n  float s2 = snoise(vec3( x.z + 74.2 , x.x - 124.5 , x.y + 99.4 ));\n  vec3 c = vec3( s , s1 , s2 );\n  return c;\n\n}\n\nvec3 curlNoise( vec3 p ){\n  \n  const float e = .1;\n  vec3 dx = vec3( e   , 0.0 , 0.0 );\n  vec3 dy = vec3( 0.0 , e   , 0.0 );\n  vec3 dz = vec3( 0.0 , 0.0 , e   );\n\n  vec3 p_x0 = snoiseVec3( p - dx );\n  vec3 p_x1 = snoiseVec3( p + dx );\n  vec3 p_y0 = snoiseVec3( p - dy );\n  vec3 p_y1 = snoiseVec3( p + dy );\n  vec3 p_z0 = snoiseVec3( p - dz );\n  vec3 p_z1 = snoiseVec3( p + dz );\n\n  float x = p_y1.z - p_y0.z - p_z1.y + p_z0.y;\n  float y = p_z1.x - p_z0.x - p_x1.z + p_x0.z;\n  float z = p_x1.y - p_x0.y - p_y1.x + p_y0.x;\n\n  const float divisor = 1.0 / ( 2.0 * e );\n  return normalize( vec3( x , y , z ) * divisor );\n\n}\n\nvec2 getCenterTexel(vec2 coord, vec2 offset) {\n\n    return (floor((coord+offset) * (_Size-EPS)) + 0.5) / _Size;\n\n}\n\nvoid main() {\n    \n\n    vec4 currentPos = texture2D(_CurrentPos, vUv);\n    vec3 prevPos = texture2D(_PrevPos, vUv).xyz;\n    vec3 delta = INERTIA * (currentPos.xyz-prevPos);\n\n    vec3 acc = vec3(0.0);\n\n    vec3 normal = texture2D(_Normal, vUv).xyz;\n\n    vec3 curlNoiseForce = curlNoise((currentPos.xyz *0.237) + _Time * 0.34) * 0.45;\n    // vec3 curlNoiseForce = curlNoise((currentPos.xyz *0.137) + _Time * 0.2) * 0.65;\n    curlNoiseForce = normal * dot(normal, curlNoiseForce);\n\n    if(_IsInteracting && currentPos.w == _Corner) {\n\n            vec3 delta = _InputWorldPos - currentPos.xyz;\n            currentPos.xyz += delta * 0.5 * smoothstep(0.0, 2.0, dot(delta, delta));\n\n    } else {\n        \n        acc += curlNoiseForce;\n        // acc -= normalize(currentPos.xyz) * 0.08;\n        // acc -= normalize(currentPos.xyz) * (dot(currentPos.xyz, currentPos.xyz) - 4.0) * -0.01;\n\n    }\n\n    acc *= timestepSq;\n    delta += acc;\n    currentPos.xyz += delta;\n\n    gl_FragColor = currentPos;\n\n}";
 },{}],"src/World3d/VerletGPU/Simulator/kernels/calcNormal.frag":[function(require,module,exports) {
-module.exports = "// precision highp float;\n\n// uniform sampler2D tMap;\n// uniform sampler2D _Position;\n// uniform float _Size;\n\n// varying vec2 vUv;\n\n// void main() {\n\n//     vec2 uv = vUv;\n\n//     vec2 texelSize = vec2(1.0/_Size);\n\n//     vec3 pos = texture2D(_Position, vUv).xyz;\n//     vec3 rNeighbour = texture2D(_Position, vUv + vec2(texelSize.x, 0.0)).xyz;\n//     vec3 lNeighbour = texture2D(_Position, vUv + vec2(-texelSize.x, 0.0)).xyz;\n//     vec3 tNeighbour = texture2D(_Position, vUv + vec2(0.0, texelSize.y)).xyz;\n//     vec3 bNeighbour = texture2D(_Position, vUv + vec2(0.0, -texelSize.y)).xyz;\n\n//     vec3 tangent = vec3(0.0);\n//     vec3 biNormal = vec3(0.0);\n//     vec3 normal = vec3(0.0);\n\n//     vec3 tangentDeltaA = vec3(0.0);\n//     vec3 tangentDeltaB = vec3(0.0);\n\n//     vec3 biNormalDeltaA = vec3(0.0);\n//     vec3 biNormalDeltaB = vec3(0.0);\n\n//     tangent = rNeighbour - pos;\n//     if(vUv.x > 1.0 - texelSize.x) {\n//          tangent = pos - lNeighbour;\n//     }\n\n//     biNormal = tNeighbour - pos;\n//     if(vUv.y > 1.0 - texelSize.y) {\n//         biNormal = pos - bNeighbour;\n//     }\n\n//     normal = normalize(cross(biNormal, tangent));\n    \n\n//     gl_FragColor = vec4(normal, 1.0);\n\n// }\n\nprecision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D tMap;\nuniform sampler2D _Position;\nuniform float _Size;\n\nvarying vec2 vUv;\n\n#define EPS 0.1\n\nvoid main() {\n\n    vec2 uv = vUv;\n\n    vec2 texelSize = vec2(1.0/_Size);\n    vec2 halfTexel = texelSize * 0.5;\n\n    vec3 pos = texture2D(_Position, vUv).xyz;\n    vec3 rNeighbour = texture2D(_Position, vUv + vec2(texelSize.x, 0.0)).xyz;\n    vec3 lNeighbour = texture2D(_Position, vUv + vec2(-texelSize.x, 0.0)).xyz;\n    vec3 tNeighbour = texture2D(_Position, vUv + vec2(0.0, texelSize.y)).xyz;\n    vec3 bNeighbour = texture2D(_Position, vUv + vec2(0.0, -texelSize.y)).xyz;\n\n    vec3 tangent = vec3(0.0);\n    vec3 biNormal = vec3(0.0);\n    vec3 normal = vec3(0.0);\n\n    vec3 tangentA = vec3(0.0);\n    vec3 tangentB = vec3(0.0);\n\n    vec3 biNormalA = vec3(0.0);\n    vec3 biNormalB = vec3(0.0);\n\n    //get tangent \n    tangentA = rNeighbour - pos;\n    if(vUv.x > 1.0 - texelSize.x) {\n        tangentA = pos - lNeighbour;\n    }\n    tangentA = pos + normalize(tangentA) * EPS;\n\n    tangentB = lNeighbour - pos;\n    if(vUv.x < texelSize.x) {\n        tangentB = pos - rNeighbour;\n    } \n\n    tangentB = pos + normalize(tangentB) * EPS;\n    \n    tangent = tangentA - tangentB;\n\n    //get biNormal \n    biNormalA = tNeighbour - pos;\n    if(vUv.y > 1.0 - texelSize.y) {\n        biNormalA = pos - bNeighbour;\n    } \n\n    biNormalA = pos + normalize(biNormalA) * EPS;\n\n    biNormalB = bNeighbour - pos;\n    if(vUv.y < texelSize.y) {\n        biNormalB = pos - tNeighbour;\n    } \n\n    biNormalB = normalize(biNormalB) * EPS;\n\n    biNormal = biNormalA - biNormalB;\n\n    normal = normalize(cross(biNormal,tangent));\n    \n\n    gl_FragColor = vec4(normal, 1.0);\n\n}";
+module.exports = "// precision highp float;\n\n// uniform sampler2D tMap;\n// uniform sampler2D _Position;\n// uniform float _Size;\n\n// varying vec2 vUv;\n\n// void main() {\n\n//     vec2 uv = vUv;\n\n//     vec2 texelSize = vec2(1.0/_Size);\n\n//     vec3 pos = texture2D(_Position, vUv).xyz;\n//     vec3 rNeighbour = texture2D(_Position, vUv + vec2(texelSize.x, 0.0)).xyz;\n//     vec3 lNeighbour = texture2D(_Position, vUv + vec2(-texelSize.x, 0.0)).xyz;\n//     vec3 tNeighbour = texture2D(_Position, vUv + vec2(0.0, texelSize.y)).xyz;\n//     vec3 bNeighbour = texture2D(_Position, vUv + vec2(0.0, -texelSize.y)).xyz;\n\n//     vec3 tangent = vec3(0.0);\n//     vec3 biNormal = vec3(0.0);\n//     vec3 normal = vec3(0.0);\n\n//     vec3 tangentDeltaA = vec3(0.0);\n//     vec3 tangentDeltaB = vec3(0.0);\n\n//     vec3 biNormalDeltaA = vec3(0.0);\n//     vec3 biNormalDeltaB = vec3(0.0);\n\n//     tangent = rNeighbour - pos;\n//     if(vUv.x > 1.0 - texelSize.x) {\n//          tangent = pos - lNeighbour;\n//     }\n\n//     biNormal = tNeighbour - pos;\n//     if(vUv.y > 1.0 - texelSize.y) {\n//         biNormal = pos - bNeighbour;\n//     }\n\n//     normal = normalize(cross(biNormal, tangent));\n    \n\n//     gl_FragColor = vec4(normal, 1.0);\n\n// }\n\nprecision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D tMap;\nuniform sampler2D _Position;\nuniform float _Size;\n\nvarying vec2 vUv;\n\n#define EPS 0.1\n\nvoid main() {\n\n    vec2 uv = vUv;\n\n    vec2 texelSize = vec2(1.0/_Size);\n    vec2 index = floor(vUv * _Size);\n\n    vec3 pos = texture2D(_Position, vUv).xyz;\n    vec3 rNeighbour = texture2D(_Position, vUv + vec2(texelSize.x, 0.0)).xyz;\n    vec3 lNeighbour = texture2D(_Position, vUv + vec2(-texelSize.x, 0.0)).xyz;\n    vec3 tNeighbour = texture2D(_Position, vUv + vec2(0.0, texelSize.y)).xyz;\n    vec3 bNeighbour = texture2D(_Position, vUv + vec2(0.0, -texelSize.y)).xyz;\n\n    vec3 tangent = vec3(1.0,0.0,0.0);\n    vec3 biNormal = vec3(0.0,1.0,0.0);\n    vec3 normal = vec3(0.0);\n\n    vec3 tangentA = vec3(0.0);\n    vec3 tangentB = vec3(0.0);\n\n    vec3 biNormalA = vec3(0.0);\n    vec3 biNormalB = vec3(0.0);\n\n    //get tangent \n    tangentA = rNeighbour - pos;\n    if(index.x == _Size - 1.0) {\n        tangentA = pos - lNeighbour;\n    }\n    tangentA = pos + (tangentA) * EPS;\n\n    tangentB = lNeighbour - pos;\n    if(index.x == 0.0) {\n        tangentB = pos - rNeighbour;\n    } \n\n    tangentB = pos + (tangentB) * EPS;\n    \n    tangent = normalize(tangentA - tangentB);\n\n    //get biNormal \n    biNormalA = tNeighbour - pos;\n    if(index.y == _Size - 1.0) {\n        biNormalA = pos - bNeighbour;\n    } \n\n    biNormalA = pos + (biNormalA) * EPS;\n\n    biNormalB = bNeighbour - pos;\n    if(index.y == 0.0) {\n        biNormalB = pos - tNeighbour;\n    } \n\n    biNormalB = pos + (biNormalB) * EPS;\n\n    biNormal = normalize(biNormalA - biNormalB);\n\n    normal = normalize(cross(biNormal,tangent));\n    \n\n    gl_FragColor = vec4(normal, 1.0);\n\n}";
+},{}],"src/World3d/VerletGPU/Simulator/kernels/bltrOffset.frag":[function(require,module,exports) {
+module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform float _TexelSize;\n\nvarying vec2 vUv;\n\nvoid main() {\n\n    vec2 blOffset = vec2(0.0, 0.0);\n    vec2 trOffset = vec2(0.0, 0.0);\n\n    float size = _Size;\n    vec2 index = floor(vUv * size); //HAVE TO READ UP ON NEAREST FILTERING\n\n    bool isTr = index.x > 0.0 && index.y > 0.0;\n    bool isTl = index.x < size- 1.0 && index.y > 0.0; \n\n    if(isTr) {\n        tlOffset = vUv;\n    }\n\n    if(isTl) {\n        trOffset = vUv;\n    }\n\n    gl_FragColor = vec4(tlOffset, trOffset);\n\n}";
+},{}],"src/World3d/VerletGPU/Simulator/kernels/brtlOffset.frag":[function(require,module,exports) {
+module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform float _TexelSize;\n\nvarying vec2 vUv;\n\nvoid main() {\n\n    vec2 brOffset = vec2(0.0, 0.0);\n    vec2 tlOffset = vec2(0.0, 0.0);\n\n    float size = _Size;\n    vec2 index = floor(vUv * size); //HAVE TO READ UP ON NEAREST FILTERING\n\n    bool isTr = index.x > 0.0 && index.y > 0.0;\n    bool isTl = index.x < size- 1.0 && index.y > 0.0; \n\n    if(isTr) {\n        tlOffset = vUv;\n    }\n\n    if(isTl) {\n        trOffset = vUv;\n    }\n\n    gl_FragColor = vec4(tlOffset, trOffset);\n\n}";
+},{}],"src/World3d/VerletGPU/Simulator/kernels/vhOffsets.frag":[function(require,module,exports) {
+module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform float _TexelSize;\n\nvarying vec2 vUv;\n\nvoid main() {\n\n    float rOffset = 0.0;\n    float lOffset = 0.0;\n    float tOffset = 0.0;\n    float bOffset = 0.0;\n\n    if(vUv.x > _TexelSize) lOffset = -_TexelSize;\n    if(vUv.x < 1.0) rOffset = _TexelSize;\n\n    if(vUv.y > _TexelSize) bOffset = -_TexelSize;\n    if(vUv.y < 1.0) tOffset = _TexelSize;\n\n    gl_FragColor = vec4(lOffset, rOffset, bOffset, tOffset);\n\n}";
 },{}],"src/World3d/VerletGPU/Simulator/kernels/restLength.frag":[function(require,module,exports) {
-module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D _InitPos;\nuniform float _Size;\n\nvarying vec2 vUv;\n\nvoid main() {\n\n    vec2 texelSize = vec2(1.0/_Size);\n\n    vec3 initPos = texture2D(_InitPos, vUv).xyz;\n\n    vec3 rNeighbour = texture2D(_InitPos, (vUv + vec2(texelSize.x, 0.0))).xyz;\n    vec3 lNeighbour = texture2D(_InitPos, (vUv + vec2(-texelSize.x, 0.0))).xyz;\n    vec3 tNeighbour = texture2D(_InitPos, (vUv + vec2(0.0, texelSize.y))).xyz;\n    vec3 bNeighbour = texture2D(_InitPos, (vUv + vec2(0.0, -texelSize.y))).xyz;\n\n    float rDist = 0.0;\n    float lDist = 0.0;\n    float tDist = 0.0;\n    float bDist = 0.0;\n\n    if(vUv.x < 1.0 - texelSize.x) {\n        rDist = length(rNeighbour - initPos );\n    }\n    if(vUv.x > texelSize.x) {\n        lDist = length(lNeighbour - initPos );\n    }\n    if(vUv.y < 1.0 - texelSize.y) {\n        tDist = length(tNeighbour - initPos );\n    }  \n    if(vUv.y > texelSize.y) {\n        bDist = length(bNeighbour - initPos );\n    }\n\n    gl_FragColor = vec4(rDist, lDist, tDist, bDist);\n    \n}";
+module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D tMap;\nuniform sampler2D _InitPos;\n// uniform sampler2D _VHOffset;\nuniform float _Size;\n\nvarying vec2 vUv;\n\nvoid main() {\n\n    vec2 texelSize = vec2(1.0/_Size);\n\n    vec3 initPos = texture2D(_InitPos, vUv).xyz;\n    // vec4 vhOffsets = texture2D(_VHOffset, vUv);\n\n    float size = _Size;\n    vec2 index = floor(vUv * size); //HAVE TO READ UP ON NEAREST FILTERING\n\n    vec3 rNeighbour = texture2D(_InitPos, (vUv + vec2(texelSize.x, 0.0))).xyz;\n    vec3 lNeighbour = texture2D(_InitPos, (vUv + vec2(-texelSize.x, 0.0))).xyz;\n    vec3 tNeighbour = texture2D(_InitPos, (vUv + vec2(0.0, texelSize.y))).xyz;\n    vec3 bNeighbour = texture2D(_InitPos, (vUv + vec2(0.0, -texelSize.y))).xyz;\n\n    float rDist = 0.0;\n    float lDist = 0.0;\n    float tDist = 0.0;\n    float bDist = 0.0;\n\n    if(index.x < size - 1.0) {\n        rDist = length(rNeighbour - initPos );\n    }\n    if(index.x > 0.0) {\n        lDist = length(lNeighbour - initPos );\n    }\n    if(index.y < size - 1.0) {\n        tDist = length(tNeighbour - initPos );\n    }  \n    if(index.y > 0.0) {\n        bDist = length(bNeighbour - initPos );\n    }\n    \n\n    gl_FragColor = vec4(rDist, lDist, tDist, bDist);\n    \n}";
 },{}],"src/World3d/VerletGPU/Simulator/kernels/restLengthDiagonal.frag":[function(require,module,exports) {
-module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D _InitPos;\nuniform float _Size;\n\nvarying vec2 vUv;\n\nvoid main() {\n\n    vec2 texelSize = vec2(1.0/_Size);\n\n    vec3 initPos = texture2D(_InitPos, vUv).xyz;\n\n    vec3 tRNeighbour = texture2D(_InitPos, (vUv + vec2(texelSize.x, texelSize.y))).xyz;\n    vec3 bLNeighbour = texture2D(_InitPos, (vUv + vec2(-texelSize.x, -texelSize.y))).xyz;\n    vec3 tLNeighbour = texture2D(_InitPos, (vUv + vec2(-texelSize.x, texelSize.y))).xyz;\n    vec3 bRNeighbour = texture2D(_InitPos, (vUv + vec2(texelSize.x, -texelSize.y))).xyz;\n\n    float trDist = 0.0;\n    float tlDist = 0.0;\n    float brDist = 0.0;\n    float blDist = 0.0;\n\n    // vec2 floorCoord = floor(vUv * 127.0);\n    // vec2 modFloorCoord = mod(floorCoord, 2.0);\n\n    bool isTr = vUv.x < 1.0 - texelSize.x && vUv.y < 1.0 - texelSize.y;\n    bool isBl = vUv.x > texelSize.x && vUv.y > texelSize.y;\n\n    bool isTl = vUv.x > texelSize.x && vUv.y < 1.0 - texelSize.y;\n    bool isBr = vUv.x < 1.0 - texelSize.x && vUv.y > texelSize.y;\n\n    if(isTr) {\n        trDist = length(tRNeighbour - initPos );\n    }\n    if(isBl) {\n        blDist = length(bLNeighbour - initPos );\n    } \n    if(isTl) {\n        tlDist = length(tLNeighbour - initPos );\n    }\n    if(isBr) {\n        brDist = length(bRNeighbour - initPos );\n    } \n\n    gl_FragColor = vec4(trDist, blDist, tlDist, brDist);\n    \n}";
+module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D tMap;\nuniform sampler2D _InitPos;\nuniform float _Size;\n\nvarying vec2 vUv;\n\nvec2 getTexCoord(float i) {\n\n    float x = mod(i, _Size);\n    float y = floor(i / _Size);\n\n    return vec2(x,y) / (_Size -1.0);\n\n}\n\nvoid main() {\n\n    vec2 texelSize = vec2(1.0/_Size);\n\n    vec3 initPos = texture2D(_InitPos, vUv).xyz;\n\n    vec3 tRNeighbour = texture2D(_InitPos, (vUv + vec2(texelSize.x, texelSize.y))).xyz;\n    vec3 tLNeighbour = texture2D(_InitPos, (vUv + vec2(-texelSize.x, texelSize.y))).xyz;\n    vec3 bRNeighbour = texture2D(_InitPos, (vUv + vec2(texelSize.x, -texelSize.y))).xyz;\n    vec3 bLNeighbour = texture2D(_InitPos, (vUv + vec2(-texelSize.x, -texelSize.y))).xyz;\n\n    float tlDist = 0.0;\n    float trDist = 0.0;\n    float brDist = 0.0;\n    float blDist = 0.0;\n\n    float size = _Size;\n    vec2 index = floor(vUv * size);\n\n    bool isTl = index.x < size- 1.0 && index.y > 0.0; \n    bool isTr = index.x > 0.0 && index.y > 0.0;\n\n    bool isBL = index.x < size - 1.0 && index.y < size - 1.0;    \n    bool isBr = index.x > 0.0 && index.y < size-1.0;\n\n    if(isBL) {\n        trDist = length(tRNeighbour - initPos );\n    } \n    if(isBr) {\n        tlDist = length(tLNeighbour - initPos );\n    }\n    if(isTl) {\n        brDist = length(bRNeighbour - initPos );\n    }\n    if(isTr) {\n        blDist = length(bLNeighbour - initPos );\n    }  \n     \n\n    gl_FragColor = vec4(trDist, tlDist, brDist, blDist);\n    \n}";
+},{}],"src/World3d/VerletGPU/Simulator/kernels/constrain.frag":[function(require,module,exports) {
+module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D tMap;\n\nuniform sampler2D _RestLengthVH;\nuniform sampler2D _RestLengthDiagonal;\n// uniform sampler2D _RestengthTLTR;\n// uniform sampler2D _RestlenghBLBR;\n\nuniform float _Size;\nuniform vec2 _TexelSize;\n\nuniform float _Clamp;\nuniform float _Stiffness;\n\nvarying vec2 vUv;\n\n#define RESTLENGTH 0.01\n\nvec3 applyConstrain(vec3 a, vec3 b, float restLength) {\n\n    vec3 delta = b - a;\n    float dist = length(delta);\n       if(dist <= _Clamp) {\n        return vec3(0.0, 0.0, 0.0);\n    } else {\n    float percentage = (dist-restLength) / (dist);\n    return delta * percentage * _Stiffness;\n    }\n\n}\n\nvoid main() {\n\n    vec4 pos = texture2D(tMap, vUv);\n\n    vec2 index = floor(vUv * _Size);\n\n    //x = right\n    //y = left\n    //z = top\n    //w = bottom\n    vec4 restLengthVH = texture2D(_RestLengthVH, vUv);\n\n    //x = top right\n    //y = top left\n    //z = bottom right\n    //w = bottom left\n    vec4 restLengthDiagonal = texture2D(_RestLengthDiagonal, vUv);\n\n    vec3 lNeighbour = texture2D(tMap, vUv + vec2(-_TexelSize.x, 0.0)).xyz;\n    vec3 rNeighbour = texture2D(tMap, vUv + vec2(_TexelSize.x, 0.0)).xyz;\n    vec3 tNeighbour = texture2D(tMap, vUv + vec2(0.0, _TexelSize.y)).xyz;\n    vec3 bNeighbour = texture2D(tMap, vUv + vec2(0.0, -_TexelSize.y)).xyz;\n\n    vec3 tRNeighbour = texture2D(tMap, (vUv + vec2(_TexelSize.x, _TexelSize.y))).xyz;\n    vec3 tLNeighbour = texture2D(tMap, (vUv + vec2(-_TexelSize.x, _TexelSize.y))).xyz;\n    vec3 bRNeighbour = texture2D(tMap, (vUv + vec2(_TexelSize.x, -_TexelSize.y))).xyz;\n    vec3 bLNeighbour = texture2D(tMap, (vUv + vec2(-_TexelSize.x, -_TexelSize.y))).xyz;\n\n    vec3 constrain = vec3(0.0);\n\n    if(index.x < _Size - 1.0) constrain += applyConstrain(pos.xyz, rNeighbour, restLengthVH.x) * 0.125;\n    if(index.x > 0.0) constrain += applyConstrain(pos.xyz, lNeighbour,restLengthVH.y) * 0.125;\n    if(index.y < _Size - 1.0) constrain += applyConstrain(pos.xyz, tNeighbour,restLengthVH.z) * 0.125;\n    if(index.y > 0.0) constrain += applyConstrain(pos.xyz, bNeighbour, restLengthVH.w) * 0.125;\n\n    bool isTl = (index.x < _Size- 1.0) && index.y > 0.0; \n    bool isTr = index.x > 0.0 && index.y > 0.0;\n\n    bool isBL = (index.x < _Size - 1.0) && index.y < (_Size - 1.0);    \n    bool isBr = index.x > 0.0 && index.y < (_Size-1.0);\n\n    if(isBL) constrain += applyConstrain(pos.xyz, tRNeighbour,restLengthDiagonal.x) * 0.125;\n    if(isBr) constrain += applyConstrain(pos.xyz, tLNeighbour, restLengthDiagonal.y) * 0.125;\n    if(isTl) constrain += applyConstrain(pos.xyz, bRNeighbour, restLengthDiagonal.z) * 0.125;\n    if(isTr) constrain += applyConstrain(pos.xyz, bLNeighbour,restLengthDiagonal.w) * 0.125;\n\n    pos.xyz += constrain;\n\n    gl_FragColor = pos;\n\n}";
 },{}],"src/World3d/VerletGPU/Simulator/kernels/constrainHorizontal.frag":[function(require,module,exports) {
-module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D tMap;\nuniform vec2 _TexelSize;\nuniform float _Flip;\nuniform sampler2D _RestLength;\nuniform float _Stiffness;\nuniform float _Clamp;\nuniform float _Size;\n\nvarying vec2 vUv;\n\nvec3 constrain(vec3 a, vec3 b, float restLength) {\n\n    vec3 delta = b - a;\n    float dist = length(delta);\n       if(dist <= _Clamp) {\n        return vec3(0.0, 0.0, 0.0);\n    }\n    float percentage = (dist-restLength) / dist;\n    return delta * percentage * _Stiffness;\n\n}\n\nvec2 getCenterTexel(vec2 coord, vec2 offset) {\n\n    return ((floor(coord * _Size) + 0.5) / (_Size)) + offset;\n\n}\n\n//inspired by:\n//https://pdfs.semanticscholar.org/4718/6dcbbc8ccc01c6f4143719d09ed5ab4395fb.pdf?_ga=2.107277378.1544954547.1603025794-293436447.1603025794\n\nvoid main() {\n\n    // vec4 pos = texture2D(tMap, getCenterTexel(vUv, vec2(0.0)));\n    vec4 pos = texture2D(tMap, (vUv));\n    \n    //r = right\n    //g = left\n    //b = top\n    //w = bottom\n    vec2 restLength = texture2D(_RestLength, vUv).xy;\n    vec3 displacement = vec3(0.0, 0.0, 0.0);\n\n    vec2 texelSize = vec2(1.0/_Size);\n\n    //floor uv coordinate to get integer representation\n    //so we know which particle to go towards\n    float floorCoord = floor(vUv.x * (_Size-1.0));\n    float modFloorCoord = mod(floorCoord, 2.0);\n    bool constrainA = modFloorCoord == mix(0.0, 1.0, _Flip);\n    bool constrainB = modFloorCoord == mix(1.0, 0.0, _Flip);\n\n    vec3 x1 = texture2D(tMap, vUv + vec2(texelSize.x, 0.0)).xyz;\n    vec3 x2 = texture2D(tMap, vUv + vec2(-texelSize.x, 0.0)).xyz;\n\n    if(constrainA) displacement = constrain(pos.xyz, x1, restLength.x);\n    if(constrainB) displacement = constrain(pos.xyz, x2, restLength.y);\n\n    pos.xyz += displacement;\n\n    gl_FragColor = pos;\n\n}";
+module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D tMap;\n// uniform sampler2D _VHOffsets;\n\nuniform vec2 _TexelSize;\nuniform float _Flip;\nuniform sampler2D _RestLength;\nuniform float _Stiffness;\nuniform float _Clamp;\nuniform float _Size;\n\nvarying vec2 vUv;\n\nvec3 constrain(vec3 a, vec3 b, float restLength) {\n\n    vec3 delta = b - a;\n    float dist = length(delta);\n       if(dist <= _Clamp) {\n        return vec3(0.0, 0.0, 0.0);\n    }\n            float percentage = (dist-restLength) / dist;\n        return delta * percentage * _Stiffness;\n     \n\n}\n\nvec2 getCenterTexel(vec2 coord, vec2 offset) {\n\n    return ((floor(coord * _Size) + 0.5) / (_Size)) + offset;\n\n}\n\n//inspired by:\n//https://pdfs.semanticscholar.org/4718/6dcbbc8ccc01c6f4143719d09ed5ab4395fb.pdf?_ga=2.107277378.1544954547.1603025794-293436447.1603025794\n\nvoid main() {\n\n    // vec4 pos = texture2D(tMap, getCenterTexel(vUv, vec2(0.0)));\n    vec4 pos = texture2D(tMap, (vUv));\n    \n    //r = right\n    //g = left\n    //b = top\n    //w = bottom\n    vec2 restLength = texture2D(_RestLength, vUv).xy;\n    vec3 displacement = vec3(0.0, 0.0, 0.0);\n\n    vec2 texelSize = vec2(1.0/_Size);\n\n    //floor uv coordinate to get integer representation\n    //so we know which particle to go towards\n    float floorCoord = floor(vUv.x * _Size);\n    float modFloorCoord = mod(floorCoord, 2.0);\n    bool constrainA = modFloorCoord == mix(0.0, 1.0, _Flip) && floorCoord < _Size - 1.0;\n    bool constrainB = modFloorCoord == mix(1.0, 0.0, _Flip) && floorCoord > 0.0;\n    \n    vec3 x1 = texture2D(tMap, vUv + vec2(texelSize.x, 0.0)).xyz;\n    vec3 x2 = texture2D(tMap, vUv + vec2(-texelSize.x, 0.0)).xyz;\n\n    if(constrainA) displacement = constrain(pos.xyz, x1, restLength.x);\n    if(constrainB) displacement = constrain(pos.xyz, x2, restLength.y);\n    // displacement = mix(constrain(pos.xyz, x1, restLength.x), constrain(pos.xyz, x2, restLength.y), _Flip);\n\n    pos.xyz += displacement;\n\n    gl_FragColor = pos;\n\n}";
 },{}],"src/World3d/VerletGPU/Simulator/kernels/constrainVertical.frag":[function(require,module,exports) {
-module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D tMap;\nuniform vec2 _TexelSize;\nuniform float _Flip;\nuniform sampler2D _RestLength;\nuniform float _Stiffness;\nuniform float _Clamp;\nuniform float _Size;\n\nvarying vec2 vUv;\n\nvec3 constrain(vec3 a, vec3 b, float restLength) {\n\n    vec3 delta = b - a;\n    float dist = length(delta);\n       if(dist <= _Clamp) {\n        return vec3(0.0, 0.0, 0.0);\n    }\n    float percentage = (dist-restLength) / dist;\n    return delta * percentage * _Stiffness;\n\n}\n\nvec2 getCenterTexel(vec2 coord, vec2 offset) {\n\n    return ((floor(coord * _Size) + 0.5) / (_Size)) + offset;\n\n}\n\n//inspired by:\n//https://pdfs.semanticscholar.org/4718/6dcbbc8ccc01c6f4143719d09ed5ab4395fb.pdf?_ga=2.107277378.1544954547.1603025794-293436447.1603025794\n\nvoid main() {\n\n    // vec4 pos = texture2D(tMap, getCenterTexel(vUv, vec2(0.0)));\n    vec4 pos = texture2D(tMap, vUv);\n    vec3 displacement = vec3(0.0, 0.0, 0.0);\n\n    //r = right\n    //g = left\n    //b = top\n    //w = bottom\n    vec2 restLength = texture2D(_RestLength, vUv).zw;\n\n    vec2 texelSize = vec2(1.0/_Size);\n\n    //floor uv coordinate to get integer representation\n    //so we know which particle to go towards\n    float floorCoord = floor(vUv.y * (_Size-1.0));\n    float modFloorCoord = mod(floorCoord, 2.0);\n    bool constrainA = modFloorCoord == mix(0.0, 1.0, _Flip);\n    bool constrainB = modFloorCoord == mix(1.0, 0.0, _Flip);\n\n    vec3 x1 = texture2D(tMap, vUv + vec2(0.0, texelSize.y)).xyz;\n    vec3 x2 = texture2D(tMap, vUv + vec2(0.0, -texelSize.y)).xyz;\n\n    if(constrainA) displacement = constrain(pos.xyz, x1, restLength.x);\n    if(constrainB) displacement = constrain(pos.xyz, x2, restLength.y);\n\n    // displacement *= pos.w;\n    pos.xyz += displacement;\n\n    gl_FragColor = pos;\n\n}";
-},{}],"src/World3d/VerletGPU/Simulator/kernels/constrainBLTR.frag":[function(require,module,exports) {
-module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D tMap;\nuniform vec2 _TexelSize;\nuniform float _Flip;\nuniform sampler2D _RestLength;\nuniform float _Stiffness;\nuniform float _Clamp;\nuniform float _Size;\n\nvarying vec2 vUv;\n\nvec3 constrain(vec3 a, vec3 b, float restLength) {\n\n    vec3 delta = b - a;\n    float dist = length(delta);\n       if(dist <= _Clamp) {\n        return vec3(0.0, 0.0, 0.0);\n    }\n    float percentage = (dist-restLength) / dist;\n    return delta * percentage * _Stiffness;\n\n}\n\n//inspired by:\n//https://pdfs.semanticscholar.org/4718/6dcbbc8ccc01c6f4143719d09ed5ab4395fb.pdf?_ga=2.107277378.1544954547.1603025794-293436447.1603025794\n\nvoid main() {\n\n    // vec4 pos = texture2D(tMap, getCenterTexel(vUv, vec2(0.0)));\n    vec4 pos = texture2D(tMap, (vUv));\n    \n    //r = top right\n    //g = bottom left\n    //b = top left\n    //w = bottom right\n    vec2 restLength = texture2D(_RestLength, vUv).xy;\n    vec3 displacement = vec3(0.0, 0.0, 0.0);\n\n    vec2 texelSize = vec2(1.0/_Size);\n\n    //floor uv coordinate to get integer representation\n    //so we know which particle to go towards\n    vec2 floorCoord = floor(vUv * (_Size-1.0));\n    vec2 modFloorCoord = mod(floorCoord, 2.0);\n\n    bool constrainA = modFloorCoord.x == mix(0.0, 1.0, _Flip) && (vUv.y < 1.0 - texelSize.y) && (vUv.x < 1.0 - texelSize.x);\n    bool constrainB = modFloorCoord.x == mix(1.0, 0.0, _Flip) && (vUv.y > texelSize.y) && (vUv.x > texelSize.x);\n\n    vec3 x1 = texture2D(tMap, vUv + vec2(texelSize.x, texelSize.y)).xyz;\n    vec3 x2 = texture2D(tMap, vUv + vec2(-texelSize.x, -texelSize.y)).xyz;\n\n    if(constrainA) displacement = constrain(pos.xyz, x1, restLength.x);\n    if(constrainB) displacement = constrain(pos.xyz, x2, restLength.y);\n\n    pos.xyz += displacement;\n\n    gl_FragColor = pos;\n\n}";
-},{}],"src/World3d/VerletGPU/Simulator/kernels/constrainBRTL.frag":[function(require,module,exports) {
-module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D tMap;\nuniform vec2 _TexelSize;\nuniform float _Flip;\nuniform sampler2D _RestLength;\nuniform float _Stiffness;\nuniform float _Clamp;\nuniform float _Size;\n\nvarying vec2 vUv;\n\nvec3 constrain(vec3 a, vec3 b, float restLength) {\n\n    vec3 delta = b - a;\n    float dist = length(delta);\n       if(dist <= _Clamp) {\n        return vec3(0.0, 0.0, 0.0);\n    }\n    float percentage = (dist-restLength) / dist;\n    return delta * percentage * _Stiffness;\n\n}\n\n//inspired by:\n//https://pdfs.semanticscholar.org/4718/6dcbbc8ccc01c6f4143719d09ed5ab4395fb.pdf?_ga=2.107277378.1544954547.1603025794-293436447.1603025794\n\nvoid main() {\n\n    // vec4 pos = texture2D(tMap, getCenterTexel(vUv, vec2(0.0)));\n    vec4 pos = texture2D(tMap, (vUv));\n    \n    //r = top right\n    //g = bottom left\n    //b = top left\n    //w = bottom right\n    vec2 restLength = texture2D(_RestLength, vUv).zw;\n    vec3 displacement = vec3(0.0, 0.0, 0.0);\n\n    vec2 texelSize = vec2(1.0/_Size);\n\n    //floor uv coordinate to get integer representation\n    //so we know which particle to go towards\n    vec2 floorCoord = floor(vUv * (_Size-1.0));\n    vec2 modFloorCoord = mod(floorCoord, 2.0);\n    bool constrainA = modFloorCoord.x == mix(1.0, 0.0, _Flip) && (vUv.y < 1.0 - texelSize.y) && (vUv.x > texelSize.x);\n    bool constrainB = modFloorCoord.x == mix(0.0, 1.0, _Flip) && (vUv.y > texelSize.y) && (vUv.x < 1.0 - texelSize.x);\n\n    vec3 x1 = texture2D(tMap, vUv + vec2(-texelSize.x, texelSize.y)).xyz;\n    vec3 x2 = texture2D(tMap, vUv + vec2(texelSize.x, -texelSize.y)).xyz;\n\n    if(constrainA) displacement = constrain(pos.xyz, x1, restLength.x);\n    if(constrainB) displacement = constrain(pos.xyz, x2, restLength.y);\n\n    pos.xyz += displacement;\n\n    gl_FragColor = pos;\n\n}";
+module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D tMap;\n// uniform sampler2D _VHOffsets;\n\nuniform vec2 _TexelSize;\nuniform float _Flip;\nuniform sampler2D _RestLength;\nuniform float _Stiffness;\nuniform float _Clamp;\nuniform float _Size;\n\nvarying vec2 vUv;\n\nvec3 constrain(vec3 a, vec3 b, float restLength) {\n\n    vec3 delta = b - a;\n    float dist = length(delta);\n       if(dist <= _Clamp) {\n        return vec3(0.0, 0.0, 0.0);\n    } \n        float percentage = (dist-restLength) / dist;\n        //float percentage = (dist-restLength) * 0.5;\n        return delta * percentage * _Stiffness;\n\n    \n\n}\n\nvec2 getCenterTexel(vec2 coord, vec2 offset) {\n\n    return ((floor(coord * _Size) + 0.5) / (_Size)) + offset;\n\n}\n\n//inspired by:\n//https://pdfs.semanticscholar.org/4718/6dcbbc8ccc01c6f4143719d09ed5ab4395fb.pdf?_ga=2.107277378.1544954547.1603025794-293436447.1603025794\n\nvoid main() {\n\n    // vec4 pos = texture2D(tMap, getCenterTexel(vUv, vec2(0.0)));\n    vec4 pos = texture2D(tMap, vUv);\n    vec3 displacement = vec3(0.0, 0.0, 0.0);\n\n    //r = right\n    //g = left\n    //b = top\n    //w = bottom\n    vec2 restLength = texture2D(_RestLength, vUv).zw;\n\n    vec2 texelSize = vec2(1.0/_Size);\n\n    float floorCoord = floor(vUv.y * (_Size));\n    float modFloorCoord = mod(floorCoord, 2.0);\n    bool constrainA = modFloorCoord == mix(0.0, 1.0, _Flip) && floorCoord < _Size - 1.0;\n    bool constrainB = modFloorCoord == mix(1.0, 0.0, _Flip) && floorCoord > 0.0;\n\n    vec3 x1 = texture2D(tMap, vUv + vec2(0.0, texelSize.y)).xyz;\n    vec3 x2 = texture2D(tMap, vUv + vec2(0.0, -texelSize.y)).xyz;\n\n    if(constrainA) displacement = constrain(pos.xyz, x1, restLength.x);\n    if(constrainB) displacement = constrain(pos.xyz, x2, restLength.y);\n\n    pos.xyz += displacement;\n\n    gl_FragColor = pos;\n\n}";
+},{}],"src/World3d/VerletGPU/Simulator/kernels/constrainTLTR.frag":[function(require,module,exports) {
+module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D tMap;\n\nuniform vec2 _TexelSize;\nuniform float _Flip;\nuniform sampler2D _RestLength;\nuniform float _Stiffness;\nuniform float _Clamp;\nuniform float _Size;\n\nvarying vec2 vUv;\n\nvec3 constrain(vec3 a, vec3 b, float restLength) {\n\n    vec3 delta = b - a;\n    float dist = length(delta);\n       if(dist <= _Clamp) {\n        return vec3(0.0, 0.0, 0.0);\n    }\n    float percentage = (dist-restLength) / dist;\n    return delta * percentage * _Stiffness;\n\n}\n\n//inspired by:\n//https://pdfs.semanticscholar.org/4718/6dcbbc8ccc01c6f4143719d09ed5ab4395fb.pdf?_ga=2.107277378.1544954547.1603025794-293436447.1603025794\n\n// void main() {\n\n//     // vec4 pos = texture2D(tMap, getCenterTexel(vUv, vec2(0.0)));\n//     vec4 pos = texture2D(tMap, (vUv));\n    \n//     //x = top right\n//     //y = bottom left\n//     //z = top left\n//     //w = bottom right\n//     vec2 restLength = texture2D(_RestLength, vUv).zw;\n//     vec3 displacement = vec3(0.0, 0.0, 0.0);\n\n//     vec2 texelSize = vec2(1.0/_Size);\n\n//     //floor uv coordinate to get integer representation\n//     //so we know which particle to go towards\n//     vec2 floorCoord = floor(vUv * (_Size-1.0));\n//     vec2 modFloorCoord = mod(floorCoord, 2.0);\n//     bool constrainA = modFloorCoord.x == mix(1.0, 0.0, _Flip) && (vUv.y < 1.0 - texelSize.y) && (vUv.x > texelSize.x);\n//     bool constrainB = modFloorCoord.x == mix(0.0, 1.0, _Flip) && (vUv.y > texelSize.y) && (vUv.x < 1.0 - texelSize.x);\n\n//     vec3 x1 = texture2D(tMap, vUv + vec2(-texelSize.x, texelSize.y)).xyz;\n//     vec3 x2 = texture2D(tMap, vUv + vec2(texelSize.x, -texelSize.y)).xyz;\n\n//     if(constrainA) displacement = constrain(pos.xyz, x1, restLength.x);\n//     if(constrainB) displacement = constrain(pos.xyz, x2, restLength.y);\n\n//     pos.xyz += displacement;\n\n//     gl_FragColor = pos;\n\n// }\n\nvoid main() {\n\n    // vec4 pos = texture2D(tMap, getCenterTexel(vUv, vec2(0.0)));\n    vec4 pos = texture2D(tMap, (vUv));\n    vec2 index = floor(vUv * _Size);\n\n    bool isBL = index.x < _Size - 1.0 && index.y < _Size - 1.0;    \n    bool isBr = index.x > 0.0 && index.y < _Size-1.0;\n\n    vec3 x1 = texture2D(tMap, vUv + vec2(_TexelSize.x, _TexelSize.y)).xyz;\n    vec3 x2 = texture2D(tMap, vUv + vec2(-_TexelSize.x, _TexelSize.y)).xyz;\n\n    vec3 displacement = vec3(0.0, 0.0, 0.0);\n\n    //x = top right\n    //y = top left\n    //z = bottom right\n    //w = bottom left\n    vec2 restLength = texture2D(_RestLength, vUv).xy;\n\n    if(isBL) displacement = constrain(pos.xyz, x1, restLength.x);\n    if(isBr) displacement = constrain(pos.xyz, x2, restLength.y);\n  \n    pos.xyz += displacement;\n\n    gl_FragColor = pos;\n\n}";
+},{}],"src/World3d/VerletGPU/Simulator/kernels/constrainBLBR.frag":[function(require,module,exports) {
+module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D tMap;\nuniform vec2 _TexelSize;\nuniform float _Flip;\nuniform sampler2D _RestLength;\nuniform float _Stiffness;\nuniform float _Clamp;\nuniform float _Size;\n\nvarying vec2 vUv;\n\nvec3 constrain(vec3 a, vec3 b, float restLength) {\n\n    vec3 delta = b - a;\n    float dist = length(delta);\n       if(dist <= _Clamp) {\n        return vec3(0.0, 0.0, 0.0);\n    }\n    float percentage = (dist-restLength) / dist;\n    return delta * percentage * _Stiffness;\n\n}\n\n//inspired by:\n//https://pdfs.semanticscholar.org/4718/6dcbbc8ccc01c6f4143719d09ed5ab4395fb.pdf?_ga=2.107277378.1544954547.1603025794-293436447.1603025794\n\n// void main() {\n\n//     // vec4 pos = texture2D(tMap, getCenterTexel(vUv, vec2(0.0)));\n//     vec4 pos = texture2D(tMap, (vUv));\n    \n//     //r = top right\n//     //g = bottom left\n//     //b = top left\n//     //w = bottom right\n//     vec2 restLength = texture2D(_RestLength, vUv).xy;\n//     vec3 displacement = vec3(0.0, 0.0, 0.0);\n\n//     vec2 texelSize = vec2(1.0/_Size);\n\n//     //floor uv coordinate to get integer representation\n//     //so we know which particle to go towards\n//     vec2 floorCoord = floor(vUv * (_Size-1.0));\n//     vec2 modFloorCoord = mod(floorCoord, 2.0);\n\n//     bool constrainA = modFloorCoord.x == mix(0.0, 1.0, _Flip) && (vUv.y < 1.0 - texelSize.y) && (vUv.x < 1.0 - texelSize.x);\n//     bool constrainB = modFloorCoord.x == mix(1.0, 0.0, _Flip) && (vUv.y > texelSize.y) && (vUv.x > texelSize.x);\n\n//     vec3 x1 = texture2D(tMap, vUv + vec2(texelSize.x, texelSize.y)).xyz;\n//     vec3 x2 = texture2D(tMap, vUv + vec2(-texelSize.x, -texelSize.y)).xyz;\n\n//     if(constrainA) displacement = constrain(pos.xyz, x1, restLength.x);\n//     if(constrainB) displacement = constrain(pos.xyz, x2, restLength.y);\n\n//     pos.xyz += displacement;\n\n//     gl_FragColor = pos;\n\n// }\n\nvoid main() {\n\n    // vec4 pos = texture2D(tMap, getCenterTexel(vUv, vec2(0.0)));\n    vec4 pos = texture2D(tMap, vUv);\n    vec2 index = floor(vUv * _Size);\n\n    bool isTL = index.x < _Size - 1.0 && index.y > 0.0;    \n    bool isTR = index.x > 0.0 && index.y > 0.0;\n\n    vec3 x1 = texture2D(tMap, vUv + vec2(_TexelSize.x, -_TexelSize.y)).xyz;\n    vec3 x2 = texture2D(tMap, vUv + vec2(-_TexelSize.x, -_TexelSize.y)).xyz;\n\n    vec3 displacement = vec3(0.0, 0.0, 0.0);\n\n    //x = top right\n    //y = top left\n    //z = bottom right\n    //w = bottom left\n    vec2 restLength = texture2D(_RestLength, vUv).zw;\n\n    if(isTL) displacement = constrain(pos.xyz, x1, restLength.x);\n    if(isTR) displacement = constrain(pos.xyz, x2, restLength.y);\n  \n    pos.xyz += displacement;\n\n    gl_FragColor = pos;\n\n}";
 },{}],"src/World3d/VerletGPU/Simulator/index.js":[function(require,module,exports) {
 "use strict";
 
@@ -6782,17 +6791,25 @@ const positionKernel = require('./kernels/position.frag');
 
 const normalKernel = require('./kernels/calcNormal.frag');
 
+const blbrOffsetKernel = require('./kernels/bltrOffset.frag');
+
+const tltrOffsetKernel = require('./kernels/brtlOffset.frag');
+
+const vhOffsetKernel = require('./kernels/vhOffsets.frag');
+
 const restlengthKernel = require('./kernels/restLength.frag');
 
 const restLengthDiagonalKernel = require('./kernels/restLengthDiagonal.frag');
+
+const constrainKernel = require('./kernels/constrain.frag');
 
 const constrainHorizontalKernel = require('./kernels/constrainHorizontal.frag');
 
 const constrainVerticalKernel = require('./kernels/constrainVertical.frag');
 
-const constrainBLTRKernel = require('./kernels/constrainBLTR.frag');
+const constrainTLTRKernel = require('./kernels/constrainTLTR.frag');
 
-const constrainBRTLKernel = require('./kernels/constrainBRTL.frag');
+const constrainBLBRKernel = require('./kernels/constrainBLBR.frag');
 
 class Simulator {
   constructor(gl, {
@@ -6804,9 +6821,9 @@ class Simulator {
     this.data = data;
     this.countX = countX;
     this.countY = countY;
+    this.firstTick = true;
     this.initSimulators();
     this.initPrograms();
-    this.prewarm();
   }
 
   initSimulators() {
@@ -6848,9 +6865,9 @@ class Simulator {
       // let offsety = Math.sin(angleY);
       // let offsetz = Math.cos(angleZ) * Math.sin(angleZ); 
 
-      prevPositionData[prevPosIterator++] += offsetx * 0.01;
-      prevPositionData[prevPosIterator++] += offsety * 0.01;
-      prevPositionData[prevPosIterator++] += offsetz * 0.01;
+      prevPositionData[prevPosIterator++] += offsetx * 0.001;
+      prevPositionData[prevPosIterator++] += offsety * 0.001;
+      prevPositionData[prevPosIterator++] += offsetz * 0.001;
       prevPositionData[prevPosIterator++] += 0.0;
     }
 
@@ -6869,7 +6886,7 @@ class Simulator {
       normalData[normalIterator++] = 0.0;
       normalData[normalIterator++] = 0.0;
       normalData[normalIterator++] = -1.0;
-      normalData[normalIterator++] = 1.0;
+      normalData[normalIterator++] = 0.0;
     }
 
     this.normalSim = new GPGPU(this.gl, {
@@ -6877,23 +6894,22 @@ class Simulator {
       type: this.gl.FLOAT // filtering: this.gl.LINEAR
 
     });
+    this.initPositions = this.createDataTexture({
+      data: this.positionData,
+      size: this.countX
+    });
     this.restlengthCapture = new GPGPU(this.gl, {
-      data: new Float32Array(this.countX * this.countY * 4),
-      type: this.gl.FLOAT
-    });
-    this.restlengthDiagonalCapture = new GPGPU(this.gl, {
-      data: new Float32Array(this.countX * this.countY * 4),
-      type: this.gl.FLOAT
-    });
-    this.constraintSim = new GPGPU(this.gl, {
       data: this.positionData,
       type: this.gl.FLOAT
     });
-  }
-
-  initPrograms() {
+    this.restlengthDiagonalCapture = new GPGPU(this.gl, {
+      data: this.positionData,
+      type: this.gl.FLOAT
+    });
     const restlengthCaptureU = {
-      _InitPos: this.positionSim.uniform,
+      _InitPos: {
+        value: this.initPositions
+      },
       _Size: {
         value: _params.params.CLOTH.SIZE
       }
@@ -6903,7 +6919,9 @@ class Simulator {
       uniforms: restlengthCaptureU
     });
     const restlengthDiagonalU = {
-      _InitPos: this.positionSim.uniform,
+      _InitPos: {
+        value: this.initPositions
+      },
       _Size: {
         value: _params.params.CLOTH.SIZE
       }
@@ -6912,6 +6930,13 @@ class Simulator {
       fragment: restLengthDiagonalKernel,
       uniforms: restlengthDiagonalU
     });
+    this.prewarm();
+  } //TODO:
+  //MAKE SURE THE LAST PIXEL IN EACH ROW IS NOT PROCESSED
+  //DOUBLE CHECK THE MIX CONDITION I ADDED
+
+
+  initPrograms() {
     const normalSimU = {
       _Position: this.positionSim.uniform,
       _Size: {
@@ -6949,6 +6974,31 @@ class Simulator {
       fragment: positionKernel,
       uniforms: positionSimU
     });
+    console.log(this.restlengthDiagonalCapture);
+    const constrainU = {
+      _RestLengthVH: this.restlengthCapture.uniform,
+      _RestLengthDiagonal: this.restlengthDiagonalCapture.uniform,
+      _Size: {
+        value: _params.params.CLOTH.SIZE
+      },
+      _TexelSize: {
+        value: new _Vec.Vec2(1.0 / _params.params.CLOTH.SIZE)
+      },
+      _Clamp: {
+        value: _params.params.PHYSICS.CLAMP
+      },
+      _Stiffness: {
+        value: _params.params.PHYSICS.STIFFNESS
+      }
+    };
+
+    for (let i = 0; i < _params.params.PHYSICS.STEPS; i++) {
+      this.positionSim.addPass({
+        fragment: constrainKernel,
+        uniforms: constrainU
+      });
+    }
+
     const prevPosCaptureSimU = {
       _Positions: this.currentPosCapture.uniform,
       _Size: {
@@ -6985,60 +7035,58 @@ class Simulator {
       flip: 1.0,
       restlength: this.restlengthCapture.uniform
     });
-    const constrainBLTRfirstPasssU = this.createConstraintUniform({
+    const constrainTLTRfirstPasssU = this.createConstraintUniform({
       flip: 0.0,
       restlength: this.restlengthDiagonalCapture.uniform
     });
-    const constrainBLTRsecondPasssU = this.createConstraintUniform({
+    const constrainTLTRsecondPasssU = this.createConstraintUniform({
       flip: 1.0,
       restlength: this.restlengthDiagonalCapture.uniform
     });
-    const constrainBRTLfirstPasssU = this.createConstraintUniform({
+    const constrainBRBLfirstPasssU = this.createConstraintUniform({
       flip: 0.0,
       restlength: this.restlengthDiagonalCapture.uniform
     });
-    const constrainBRTLsecondPasssU = this.createConstraintUniform({
+    const constrainBRBLsecondPasssU = this.createConstraintUniform({
       flip: 1.0,
       restlength: this.restlengthDiagonalCapture.uniform
-    });
-
-    for (let i = 0; i < _params.params.PHYSICS.STEPS; i++) {
-      // //HORIZONTAL CONSTRAINTS
-      this.positionSim.addPass({
-        fragment: constrainHorizontalKernel,
-        uniforms: constrainHorizontalFirstPassU
-      });
-      this.positionSim.addPass({
-        fragment: constrainHorizontalKernel,
-        uniforms: constrainHorizontalSecondPassU
-      }); //VERTICAL CONSTRAINTS
-
-      this.positionSim.addPass({
-        fragment: constrainVerticalKernel,
-        uniforms: constrainVerticalFirstPassU
-      });
-      this.positionSim.addPass({
-        fragment: constrainVerticalKernel,
-        uniforms: constrainVerticalSecondPassU
-      }); //DIAGONAL CONSTRAINTS
-
-      this.positionSim.addPass({
-        fragment: constrainBLTRKernel,
-        uniforms: constrainBLTRfirstPasssU
-      });
-      this.positionSim.addPass({
-        fragment: constrainBRTLKernel,
-        uniforms: constrainBRTLfirstPasssU
-      });
-      this.positionSim.addPass({
-        fragment: constrainBLTRKernel,
-        uniforms: constrainBLTRsecondPasssU
-      });
-      this.positionSim.addPass({
-        fragment: constrainBRTLKernel,
-        uniforms: constrainBRTLsecondPasssU
-      });
-    }
+    }); // for(let i = 0; i < params.PHYSICS.STEPS; i++) {
+    //                     //HORIZONTAL CONSTRAINTS
+    //     this.positionSim.addPass({
+    //         fragment: constrainHorizontalKernel,
+    //         uniforms: constrainHorizontalFirstPassU
+    //     });
+    //     this.positionSim.addPass({
+    //         fragment: constrainHorizontalKernel,
+    //         uniforms: constrainHorizontalSecondPassU
+    //     });
+    //     //VERTICAL CONSTRAINTS
+    //     this.positionSim.addPass({
+    //         fragment: constrainVerticalKernel,
+    //         uniforms: constrainVerticalFirstPassU
+    //     });
+    //     this.positionSim.addPass({
+    //         fragment: constrainVerticalKernel,
+    //         uniforms: constrainVerticalSecondPassU
+    //     });
+    //     // // DIAGONAL CONSTRAINTS
+    //     this.positionSim.addPass({
+    //         fragment: constrainBLBRKernel,
+    //         uniforms: constrainBRBLfirstPasssU
+    //     });
+    //     this.positionSim.addPass({
+    //         fragment: constrainTLTRKernel,
+    //         uniforms: constrainTLTRfirstPasssU
+    //     });
+    //     this.positionSim.addPass({
+    //         fragment: constrainBLBRKernel,
+    //         uniforms: constrainBRBLsecondPasssU
+    //     });
+    //     this.positionSim.addPass({
+    //         fragment: constrainTLTRKernel,
+    //         uniforms: constrainTLTRsecondPasssU
+    //     });
+    //     }
   }
 
   createDataTexture({
@@ -7138,7 +7186,7 @@ class Simulator {
 }
 
 exports.Simulator = Simulator;
-},{"../../../../vendor/ogl/src/core/Program":"vendor/ogl/src/core/Program.js","../../../../vendor/ogl/src/math/Vec2":"vendor/ogl/src/math/Vec2.js","../../../../vendor/ogl/src/core/Texture":"vendor/ogl/src/core/Texture.js","../../../../vendor/ogl/src/math/Vec3":"vendor/ogl/src/math/Vec3.js","../../../../vendor/ogl/src/extras/GPGPU":"vendor/ogl/src/extras/GPGPU.js","./kernels/prevPos.frag":"src/World3d/VerletGPU/Simulator/kernels/prevPos.frag","./kernels/currentPos.frag":"src/World3d/VerletGPU/Simulator/kernels/currentPos.frag","./kernels/position.frag":"src/World3d/VerletGPU/Simulator/kernels/position.frag","./kernels/calcNormal.frag":"src/World3d/VerletGPU/Simulator/kernels/calcNormal.frag","./kernels/restLength.frag":"src/World3d/VerletGPU/Simulator/kernels/restLength.frag","./kernels/restLengthDiagonal.frag":"src/World3d/VerletGPU/Simulator/kernels/restLengthDiagonal.frag","./kernels/constrainHorizontal.frag":"src/World3d/VerletGPU/Simulator/kernels/constrainHorizontal.frag","./kernels/constrainVertical.frag":"src/World3d/VerletGPU/Simulator/kernels/constrainVertical.frag","./kernels/constrainBLTR.frag":"src/World3d/VerletGPU/Simulator/kernels/constrainBLTR.frag","./kernels/constrainBRTL.frag":"src/World3d/VerletGPU/Simulator/kernels/constrainBRTL.frag","../../../params.js":"src/params.js"}],"static/cubemap/negx.jpg":[function(require,module,exports) {
+},{"../../../../vendor/ogl/src/core/Program":"vendor/ogl/src/core/Program.js","../../../../vendor/ogl/src/math/Vec2":"vendor/ogl/src/math/Vec2.js","../../../../vendor/ogl/src/core/Texture":"vendor/ogl/src/core/Texture.js","../../../../vendor/ogl/src/math/Vec3":"vendor/ogl/src/math/Vec3.js","../../../../vendor/ogl/src/extras/GPGPU":"vendor/ogl/src/extras/GPGPU.js","./kernels/prevPos.frag":"src/World3d/VerletGPU/Simulator/kernels/prevPos.frag","./kernels/currentPos.frag":"src/World3d/VerletGPU/Simulator/kernels/currentPos.frag","./kernels/position.frag":"src/World3d/VerletGPU/Simulator/kernels/position.frag","./kernels/calcNormal.frag":"src/World3d/VerletGPU/Simulator/kernels/calcNormal.frag","./kernels/bltrOffset.frag":"src/World3d/VerletGPU/Simulator/kernels/bltrOffset.frag","./kernels/brtlOffset.frag":"src/World3d/VerletGPU/Simulator/kernels/brtlOffset.frag","./kernels/vhOffsets.frag":"src/World3d/VerletGPU/Simulator/kernels/vhOffsets.frag","./kernels/restLength.frag":"src/World3d/VerletGPU/Simulator/kernels/restLength.frag","./kernels/restLengthDiagonal.frag":"src/World3d/VerletGPU/Simulator/kernels/restLengthDiagonal.frag","./kernels/constrain.frag":"src/World3d/VerletGPU/Simulator/kernels/constrain.frag","./kernels/constrainHorizontal.frag":"src/World3d/VerletGPU/Simulator/kernels/constrainHorizontal.frag","./kernels/constrainVertical.frag":"src/World3d/VerletGPU/Simulator/kernels/constrainVertical.frag","./kernels/constrainTLTR.frag":"src/World3d/VerletGPU/Simulator/kernels/constrainTLTR.frag","./kernels/constrainBLBR.frag":"src/World3d/VerletGPU/Simulator/kernels/constrainBLBR.frag","../../../params.js":"src/params.js"}],"static/cubemap/negx.jpg":[function(require,module,exports) {
 module.exports = "/negx.597b3bc3.jpg";
 },{}],"static/cubemap/negy.jpg":[function(require,module,exports) {
 module.exports = "/negy.25d1513d.jpg";
@@ -7160,9 +7208,9 @@ module.exports = {
   "posz": require("./posz.jpg")
 };
 },{"./negx.jpg":"static/cubemap/negx.jpg","./negy.jpg":"static/cubemap/negy.jpg","./negz.jpg":"static/cubemap/negz.jpg","./posx.jpg":"static/cubemap/posx.jpg","./posy.jpg":"static/cubemap/posy.jpg","./posz.jpg":"static/cubemap/posz.jpg"}],"src/World3d/VerletGPU/shader/verlet.vert":[function(require,module,exports) {
-module.exports = "precision highp float;\n#define GLSLIFY 1\n\nattribute vec2 position;\nattribute vec2 uv;\n\nuniform sampler2D _Positions;\nuniform sampler2D _Normals;\n\nuniform mat4 projectionMatrix;\nuniform mat4 modelViewMatrix;\nuniform mat3 normalMatrix;\n\nvarying vec2 vUv;\nvarying vec3 vPos;\nvarying vec3 vNormal;\n\nuniform float _Size;\n\n#define LIGHT vec3(0.0, 5.0, 2.3)\n#define EPS 0.00001\n\nvec2 getCenterTexel(vec2 coord, vec2 offset) {\n\n    return (floor((coord+offset) * (_Size-EPS)) + 0.5) / _Size;\n\n}\n\nvoid main() {\n\n    vec3 pos = texture2D(_Positions, position).xyz;\n    vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);\n    vec3 norm = texture2D(_Normals, position).xyz;\n\n    gl_Position = projectionMatrix * mvPos;\n    vUv = uv;\n    vPos = pos.xyz;\n    vNormal = normalMatrix * norm;\n\n}";
+module.exports = "precision highp float;\n#define GLSLIFY 1\n\nattribute vec2 position;\nattribute vec2 uv;\n\nuniform sampler2D _Positions;\nuniform sampler2D _Normals;\n\nuniform mat4 projectionMatrix;\nuniform mat4 modelViewMatrix;\nuniform mat3 normalMatrix;\n\nvarying vec2 vUv;\nvarying vec3 vPos;\nvarying vec3 vNormal;\n\nuniform float _Size;\n\n#define LIGHT vec3(0.0, 5.0, 2.3)\n#define EPS 0.00001\n\nvec2 getCenterTexel(vec2 coord, vec2 offset) {\n\n    return (floor((coord+offset) * (_Size-EPS)) + 0.5) / _Size;\n\n}\n\nvoid main() {\n\n    vec3 pos = texture2D(_Positions, position).xyz;\n    vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);\n    vec3 norm = normalize(texture2D(_Normals, position).xyz);\n\n    gl_Position = projectionMatrix * mvPos;\n    vUv = uv;\n    vPos = pos.xyz;\n    vNormal = normalize(normalMatrix * norm);\n\n}";
 },{}],"src/World3d/VerletGPU/shader/verlet.frag":[function(require,module,exports) {
-module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform samplerCube _CubeMap;\n\nuniform vec3 cameraPosition;\n\nvarying vec3 vNormal;\nvarying vec3 vPos;\nvarying vec2 vUv;\n\nvoid main() {\n\n    vec3 normal = normalize(vNormal);    \n    vec3 reflectV = reflect(normalize(vPos - cameraPosition), normal);\n    vec3 col = textureCube(_CubeMap, reflectV).xyz;\n    gl_FragColor = vec4(col, 1.0);\n    // gl_FragColor = vec4(vNormal*0.5+0.5, 1.0);\n\n}";
+module.exports = "precision highp float;\n#define GLSLIFY 1\n\nuniform samplerCube _CubeMap;\n\nuniform vec3 cameraPosition;\n\nvarying vec3 vNormal;\nvarying vec3 vPos;\nvarying vec2 vUv;\n\nvoid main() {\n\n    vec3 normal = normalize(vNormal);\n\n    float light = dot(normal, vec3(0.0, 1.0, 0.0)) * 0.5 + 0.5;\n    light = light * 0.8 + (1.0 - 0.8);\n\n    vec3 reflectV = reflect(normalize(vPos - cameraPosition), normal);\n    vec3 col = textureCube(_CubeMap, reflectV).xyz;\n    gl_FragColor = vec4(col, 1.0);\n    // gl_FragColor = vec4(light,light,light, 1.0);\n    // gl_FragColor = vec4(vNormal*0.5+0.5, 1.0);\n\n}";
 },{}],"src/World3d/VerletGPU/index.js":[function(require,module,exports) {
 "use strict";
 
@@ -7256,7 +7304,10 @@ class Verlet extends _Mesh.Mesh {
 
   initProgram() {
     this.cubeMapTexture = new _Texture.Texture(this.gl, {
-      target: this.gl.TEXTURE_CUBE_MAP
+      target: this.gl.TEXTURE_CUBE_MAP,
+      generateMipmaps: true // minFilter: this.gl.LINEAR_MIPMAP_LINEAR,
+      // magFilter: this.gl.LINEAR_MIPMAP_LINEAR
+
     });
     this.loadCubeMap();
     const uniforms = {
@@ -7459,6 +7510,7 @@ class World3d {
       scene: this.scene
     });
     this.render({
+      // scene: this.verlet.simulator.restlengthCapture.passes[0].mesh,
       scene: this.scene,
       camera: this.camera,
       clear: true
@@ -7577,7 +7629,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "54108" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "58161" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
